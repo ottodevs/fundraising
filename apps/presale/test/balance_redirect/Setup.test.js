@@ -1,17 +1,10 @@
 const {
-  PRESALE_GOAL,
-  PERCENT_SUPPLY_OFFERED,
-  VESTING_CLIFF_PERIOD,
-  VESTING_COMPLETE_PERIOD,
-  PRESALE_STATE,
-  CONNECTOR_WEIGHT,
-  TAP_RATE,
   PRESALE_PERIOD,
+  RESERVE_RATIOS,
   ZERO_ADDRESS,
-  PERCENT_FUNDING_FOR_BENEFICIARY,
 } = require('@ablack/fundraising-shared-test-helpers/constants')
-const { prepareDefaultSetup, initializePresale, defaultDeployParams } = require('./common/deploy')
-const { tokenExchangeRate, now } = require('./common/utils')
+const { PRESALE_STATE, prepareDefaultSetup, initializePresale, defaultDeployParams } = require('./common/deploy')
+const { tokenExchangeRate, now } = require('../common/utils')
 const { assertRevert } = require('@aragon/test-helpers/assertThrow')
 
 contract('Presale, setup', ([anyone, appManager, someEOA]) => {
@@ -45,14 +38,11 @@ contract('Presale, setup', ([anyone, appManager, someEOA]) => {
         expect((await this.presale.openDate()).toNumber()).to.equal(startDate)
       })
 
-      it('Funding goal and percentage offered are set', async () => {
-        expect((await this.presale.goal()).toNumber()).to.equal(Number(PRESALE_GOAL))
-        expect((await this.presale.supplyOfferedPct()).toNumber()).to.equal(PERCENT_SUPPLY_OFFERED)
+      it('Future reserve ratio is set', async () => {
+        expect((await this.presale.futureReserveRatio()).toNumber()).to.equal(Number(RESERVE_RATIOS[0]))
       })
 
-      it('Dates and time periods are set', async () => {
-        expect((await this.presale.vestingCliffPeriod()).toNumber()).to.equal(VESTING_CLIFF_PERIOD)
-        expect((await this.presale.vestingCompletePeriod()).toNumber()).to.equal(VESTING_COMPLETE_PERIOD)
+      it('Presale period is set', async () => {
         expect((await this.presale.period()).toNumber()).to.equal(PRESALE_PERIOD)
       })
 
@@ -84,10 +74,6 @@ contract('Presale, setup', ([anyone, appManager, someEOA]) => {
       it('Beneficiary address is set', async () => {
         expect(await this.presale.beneficiary()).to.equal(appManager)
       })
-
-      it('Percent funding for beneficiary is set', async () => {
-        expect((await this.presale.fundingForBeneficiaryPct()).toNumber()).to.equal(PERCENT_FUNDING_FOR_BENEFICIARY)
-      })
     }
 
     describe('When no startDate is specified upon initialization', () => {
@@ -118,24 +104,11 @@ contract('Presale, setup', ([anyone, appManager, someEOA]) => {
     it('Reverts when setting invalid dates', async () => {
       await assertRevert(initializePresale(this, { ...defaultParams, startDate: Math.floor(new Date().getTime() / 1000) - 1 }), 'PRESALE_INVALID_TIME_PERIOD')
       await assertRevert(initializePresale(this, { ...defaultParams, presalePeriod: 0 }), 'PRESALE_INVALID_TIME_PERIOD')
-      await assertRevert(initializePresale(this, { ...defaultParams, vestingCliffPeriod: defaultParams.presalePeriod - 1 }), 'PRESALE_INVALID_TIME_PERIOD')
-      await assertRevert(
-        initializePresale(this, { ...defaultParams, vestingCompletePeriod: defaultParams.vestingCliffPeriod - 1 }),
-        'PRESALE_INVALID_TIME_PERIOD'
-      )
     })
 
-    it('Reverts when setting an invalid funding goal', async () => {
-      await assertRevert(initializePresale(this, { ...defaultParams, presaleGoal: 0 }), 'PRESALE_INVALID_GOAL')
-    })
-
-    it('Reverts when setting an invalid percent supply offered', async () => {
-      await assertRevert(initializePresale(this, { ...defaultParams, percentSupplyOffered: 0 }), 'PRESALE_INVALID_PCT')
-      await assertRevert(initializePresale(this, { ...defaultParams, percentSupplyOffered: 1e6 + 1 }), 'PRESALE_INVALID_PCT')
-    })
-
-    it('Reverts when setting an invalid percent funding for beneficiary', async () => {
-      await assertRevert(initializePresale(this, { ...defaultParams, percentFundingForBeneficiary: 1e6 + 1 }), 'PRESALE_INVALID_PCT')
+    it('Reverts when setting an invalid future reserve ratio', async () => {
+      await assertRevert(initializePresale(this, { ...defaultParams, futureReserveRatio: 0 }), 'PRESALE_INVALID_PCT')
+      await assertRevert(initializePresale(this, { ...defaultParams, futureReserveRatio: 1e6 + 1 }), 'PRESALE_INVALID_PCT')
     })
 
     it('Reverts when setting an invalid beneficiary address', async () => {
