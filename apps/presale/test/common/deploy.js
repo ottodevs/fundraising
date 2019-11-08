@@ -110,10 +110,10 @@ const deploy = {
   },
 
   /* PRESALE */
-  deployPresale: async (test, appManager) => {
-    const appBase = await Presale.new()
+  deployPresale: async (test, appManager, presaleArtifact) => {
+    const appBase = await presaleArtifact.new()
     const receipt = await test.dao.newAppInstance(hash('presale.aragonpm.eth'), appBase.address, '0x', false, { from: appManager })
-    test.presale = Presale.at(deploy.getProxyAddress(receipt))
+    test.presale = presaleArtifact.at(deploy.getProxyAddress(receipt))
     test.PRESALE_OPEN_ROLE = await appBase.OPEN_ROLE()
     test.PRESALE_CONTRIBUTE_ROLE = await appBase.CONTRIBUTE_ROLE()
   },
@@ -166,7 +166,7 @@ const deploy = {
   },
 
   /* ~EVERYTHING~ */
-  prepareDefaultSetup: async (test, appManager) => {
+  prepareDefaultSetup: async (test, appManager, presaleArtifact = Presale) => {
     await deploy.deployDAO(test, appManager)
     deploy.setDAOPermissions(test, appManager)
 
@@ -176,7 +176,7 @@ const deploy = {
     await deploy.deployVault(test, appManager)
     await deploy.deployReserve(test, appManager)
     await deploy.deployFundraising(test, appManager)
-    await deploy.deployPresale(test, appManager)
+    await deploy.deployPresale(test, appManager, presaleArtifact)
 
     await deploy.setVaultPermissions(test, appManager)
     await deploy.setReservePermissions(test, appManager)
