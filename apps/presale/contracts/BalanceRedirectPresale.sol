@@ -31,6 +31,8 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
     string private constant ERROR_INVALID_BENEFICIARY      = "PRESALE_INVALID_BENEFICIARY";
     string private constant ERROR_INVALID_CONTRIBUTE_TOKEN = "PRESALE_INVALID_CONTRIBUTE_TOKEN";
     string private constant ERROR_INVALID_EXCHANGE_RATE    = "PRESALE_INVALID_EXCHANGE_RATE";
+    string private constant ERROR_INVALID_OPEN_DATE        = "PRESALE_INVALID_OPEN_DATE";
+    string private constant ERROR_TIME_PERIOD_ZERO         = "PRESALE_TIME_PERIOD_ZERO";
     string private constant ERROR_INVALID_TIME_PERIOD      = "PRESALE_INVALID_TIME_PERIOD";
     string private constant ERROR_INVALID_PCT              = "PRESALE_INVALID_PCT";
     string private constant ERROR_INVALID_STATE            = "PRESALE_INVALID_STATE";
@@ -99,7 +101,6 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
         require(isContract(_reserve),                                               ERROR_CONTRACT_IS_EOA);
         require(_beneficiary != address(0),                                         ERROR_INVALID_BENEFICIARY);
         require(isContract(_contributionToken),                                     ERROR_INVALID_CONTRIBUTE_TOKEN);
-        require(_period > 0,                                                        ERROR_INVALID_TIME_PERIOD);
         require(_exchangeRate > 0,                                                  ERROR_INVALID_EXCHANGE_RATE);
         require(_futureReserveRatio > 0 && _futureReserveRatio <= PPM, ERROR_INVALID_PCT);
 
@@ -111,9 +112,10 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
         reserve = _reserve;
         beneficiary = _beneficiary;
         contributionToken = _contributionToken;
-        period = _period;
         exchangeRate = _exchangeRate;
         futureReserveRatio = _futureReserveRatio;
+
+        _setPeriod(_period);
 
         if (_openDate != 0) {
             _setOpenDate(_openDate);
@@ -121,11 +123,25 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
     }
 
     /**
+     * @notice Set presale open date
+     * @param _date New date to be set
+    */
+    function setOpenDate(uint64 _date) external auth(OPEN_ROLE) {
+        _setOpenDate(_date);
+    }
+
+    /**
+     * @notice Set presale duration
+     * @param _period New duration to be set
+    */
+    function setPeriod(uint64 _period) external auth(OPEN_ROLE) {
+        _setPeriod(_period);
+    }
+
+    /**
      * @notice Open presale [enabling users to contribute]
     */
     function open() external auth(OPEN_ROLE) {
-        require(state() == State.Pending, ERROR_INVALID_STATE);
-
         _setOpenDate(getTimestamp64());
     }
 
@@ -223,11 +239,18 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
     }
 
     function _setOpenDate(uint64 _date) internal {
-        require(_date >= getTimestamp64(), ERROR_INVALID_TIME_PERIOD);
+        require(state() == State.Pending, ERROR_INVALID_STATE);
+        require(_date >= getTimestamp64(), ERROR_INVALID_OPEN_DATE);
 
         openDate = _date;
 
         emit SetOpenDate(_date);
+    }
+
+    function _setPeriod(uint64 _period) internal {
+        require(_period > 0, ERROR_TIME_PERIOD_ZERO);
+        require(openDate == 0 || openDate + _period > getTimestamp64(), ERROR_INVALID_TIME_PERIOD);
+        period = _period;
     }
 
     function _transfer(address _token, address _from, address _to, uint256 _amount) internal {
