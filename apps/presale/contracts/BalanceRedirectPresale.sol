@@ -40,6 +40,7 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
     string private constant ERROR_INSUFFICIENT_BALANCE     = "PRESALE_INSUFFICIENT_BALANCE";
     string private constant ERROR_INSUFFICIENT_ALLOWANCE   = "PRESALE_INSUFFICIENT_ALLOWANCE";
     string private constant ERROR_TOKEN_TRANSFER_REVERTED  = "PRESALE_TOKEN_TRANSFER_REVERTED";
+    string private constant ERROR_NO_REFUNDS               = "PRESALE_NO_REFUNDS";
 
     enum State {
         Pending,     // presale is idle and pending to be started
@@ -151,10 +152,10 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
      * @param _value       The amount of contribution token to be spent
     */
     function contribute(address _contributor, uint256 _value) external payable nonReentrant auth(CONTRIBUTE_ROLE) {
-        require(state() == State.Funding, ERROR_INVALID_STATE);
-        require(msg.value == 0,                                                    ERROR_INVALID_CONTRIBUTE_VALUE);
-        require(_value > 0,                                                        ERROR_INVALID_CONTRIBUTE_VALUE);
-        require(contributionToken.balanceOf(_contributor) >= _value,               ERROR_INSUFFICIENT_BALANCE);
+        require(state() == State.Funding,                                           ERROR_INVALID_STATE);
+        require(msg.value == 0,                                                     ERROR_INVALID_CONTRIBUTE_VALUE);
+        require(_value > 0,                                                         ERROR_INVALID_CONTRIBUTE_VALUE);
+        require(contributionToken.balanceOf(_contributor) >= _value,                ERROR_INSUFFICIENT_BALANCE);
         require(contributionToken.allowance(_contributor, address(this)) >= _value, ERROR_INSUFFICIENT_ALLOWANCE);
 
         // (contributor) ~~~> contribution tokens ~~~> (presale)
@@ -172,7 +173,7 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
      * @notice Does nothing. Interface compliance.
     */
     function refund(address, uint256) external isInitialized {
-        return;
+        revert(ERROR_NO_REFUNDS);
     }
 
     /**
