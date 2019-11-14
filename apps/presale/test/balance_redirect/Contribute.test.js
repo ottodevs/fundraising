@@ -7,6 +7,8 @@ const chai = require('chai')
   .use(require('chai-bignumber')(web3.BigNumber))
   .should()
 
+const ERROR_NO_REFUNDS = 'PRESALE_NO_REFUNDS'
+
 contract('Balance Redirect Presale, contribute() functionality', ([anyone, appManager, buyer1, buyer2]) => {
   const initializePresaleWithERC20 = async startDate => {
     await this.contributionToken.generateTokens(buyer1, '100e18')
@@ -114,6 +116,10 @@ contract('Balance Redirect Presale, contribute() functionality', ([anyone, appMa
           await assertRevert(this.presale.contribute(buyer1, '10e18', { from: buyer1, value: 1 }), 'PRESALE_INVALID_CONTRIBUTE_VALUE')
         })
 
+        it('Reverts when trying to refund', async () => {
+          await assertRevert(this.presale.refund(buyer1, 1, { from: buyer1 }), ERROR_NO_REFUNDS)
+        })
+
         describe('When the sale is Finished', () => {
           before(async () => {
             await this.presale.mockSetTimestamp(startDate + PRESALE_PERIOD)
@@ -125,6 +131,10 @@ contract('Balance Redirect Presale, contribute() functionality', ([anyone, appMa
 
           it('Reverts if a user attempts to buy tokens', async () => {
             await assertRevert(contribute(buyer2, 1), 'PRESALE_INVALID_STATE')
+          })
+
+          it('Reverts when trying to refund', async () => {
+            await assertRevert(this.presale.refund(buyer1, 1, { from: buyer1 }), ERROR_NO_REFUNDS)
           })
         })
 
@@ -140,6 +150,10 @@ contract('Balance Redirect Presale, contribute() functionality', ([anyone, appMa
 
           it('Reverts if a user attempts to buy tokens', async () => {
             await assertRevert(contribute(buyer2, 1), 'PRESALE_INVALID_STATE')
+          })
+
+          it('Reverts when trying to refund', async () => {
+            await assertRevert(this.presale.refund(buyer1, 1, { from: buyer1 }), ERROR_NO_REFUNDS)
           })
         })
       })
