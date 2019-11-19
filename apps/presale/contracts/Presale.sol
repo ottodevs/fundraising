@@ -194,6 +194,10 @@ contract Presale is EtherTokenConstant, IsContract, AragonApp, IPresale {
         _close();
     }
 
+    function contributionToken() external view returns (ERC20) {
+        return contributionToken;
+    }
+
     /***** public view functions *****/
 
     /**

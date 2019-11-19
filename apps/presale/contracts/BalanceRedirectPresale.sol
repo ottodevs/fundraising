@@ -51,7 +51,6 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
 
     IAragonFundraisingController                    public controller;
     TokenManager                                    public tokenManager;
-    ERC20                                           public token;
     address                                         public reserve;
     address                                         public beneficiary;
     ERC20                                           public contributionToken;
@@ -109,7 +108,6 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
 
         controller = _controller;
         tokenManager = _tokenManager;
-        token = ERC20(_tokenManager.token());
         reserve = _reserve;
         beneficiary = _beneficiary;
         contributionToken = _contributionToken;
@@ -198,6 +196,10 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
         controller.openTrading();
 
         emit Close();
+    }
+
+    function contributionToken() external view returns (ERC20) {
+        return contributionToken;
     }
 
     /***** public view functions *****/
