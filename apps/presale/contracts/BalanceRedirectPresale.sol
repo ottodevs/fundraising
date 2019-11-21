@@ -254,11 +254,11 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
         period = _period;
     }
 
-    function _transfer(address _token, address _from, address _to, uint256 _amount) internal {
+    function _transfer(ERC20 _token, address _from, address _to, uint256 _amount) internal {
         if (_from == address(this)) {
-            require(ERC20(_token).safeTransfer(_to, _amount), ERROR_TOKEN_TRANSFER_REVERTED);
+            require(_token.safeTransfer(_to, _amount), ERROR_TOKEN_TRANSFER_REVERTED);
         } else {
-            require(ERC20(_token).safeTransferFrom(_from, _to, _amount), ERROR_TOKEN_TRANSFER_REVERTED);
+            require(_token.safeTransferFrom(_from, _to, _amount), ERROR_TOKEN_TRANSFER_REVERTED);
         }
     }
 }
