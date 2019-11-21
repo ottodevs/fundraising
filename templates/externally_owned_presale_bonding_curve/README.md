@@ -3,96 +3,41 @@
 ## Description
 Aragon externally owned presale and bonding curve template is intended to deploy the bonding curve between ANT and ANJ for Aragon Network Court, along with the presale.
 
-#### Opening presale
+This pseudo-DAO has no core apps Voting, Finance or Vault, only a Token Manager for the bonded token, and it's supposed to be controlled externally (by the Aragon Network DAO in the case of ANJ), so all governing permissions are set to an external single entity (which in case of ANJ will be the Agent of the Aragon Network DAO).
 
-The board decides on when the presale [and thus the fundraising campaign] is to be open.
+Because the purpose isn't either a real fundraising campaign, but only exchange functionality given by the bonding curve, it doesn't have a Tap mechanism either.
 
-#### Handling fundraising proceeds
-
-The board decides on what use is to be made of the fundraising proceeds which are periodically transferred to their discretionnary `Vault` / `Finance` app.
-
-#### Opening votes
-
-The board decides on when new votes should be open for shareholders to enforce decisions over the organization.
-
-
-#### Handling fundraising parameters
-
-Shareholders decide on whether / how beneficiary, fees, collateralization settings and collaterals taps should be updated.
-
-### Rationale
-
-This architecture grants [most of] the governance rights to shareholders [to protect their investment]. There is thus a need to mitigate situations where a shareholder owning more than 50% of the shares would own the whole organization. This is why `SHARE` based votes [_i.e._ most of the organization decisions] can only be open and initiated by the board.
-
+The presale used is the simple version, that when close redirects part of the balance of the collateral token to a beneficiary in order to adjust its price to the one that the bonding curve will have given the toal supply of bonded tokens minted and the defined reserve ratio.
 
 ## Usage
-
-### Prepare instance
-> Deploy a DAO and install all board related apps
-
-```
-template.prepareInstance(boardTokenName, boardTokenSymbol, boardMembers, boardVotingsSettings, financePeriod)
-```
-
-- **boardTokenName** Name for the token used by the board
-- **boardTokenSymbol** Symbol for the token used by the board
-- **boardMembers** Array of board members addresses
-- **boardVotingSettings:** Array of [supportRequired, minAcceptanceQuorum, voteDuration] to set up the board voting app [multisig]
-- **financePeriod** Initial duration for accounting periods of the boards discretionnary vault [it can be set to zero in order to use the default of 30 days]
-
-### Install share apps
-
-```
-template.installShareApps(id, shareTokenName, shareTokenSymbol, shareVotingsSettings)
-```
-
-- **id** Id for org, will assign [id].aragonid.eth
-- **shareTokenName** Name for the token used by the shareholders [the bonded token]
-- **shareTokenSymbol** Symbol for the token used by shareholders [the bonded token]
-- **shareVotingSettings:** Array of [supportRequired, minAcceptanceQuorum, voteDuration] to set up the shareholders voting app [multisig]
 
 ### Install fundraising apps
 
 ```
 template.installFundraisingApps(
-    goal,
+    owner,
+    id,
+    collateralToken,
+    bondedToken,
     period,
     exchangeRate,
-    vestingCliffPeriod,
-    vestingCompletePeriod,
-    supplyOfferedPct,
-    fundingForBeneficiaryPct,
     openDate,
+    reserveRatio,
     batchBlocks,
-    maximumTapRateIncreasePct,
-    maximumTapFloorDecreasePct
+    slippage
 )
 ```
 
-- **goal** The presale goal
+- **owner** Owner that will control the pseudo-DAO
+- **id** Id for org, will assign [id].aragonid.eth
+- **collateralToken** Collateral token in bonding curve and presale
+- **bondedToken** Bonded token in bonding curve and presale
 - **period** The presale period
 - **exchangeRate** The presale exchange rate [in PPM]
-- **vestingCliffPeriod** The cliff period for vested shares purchased during presale
-- **vestingCompletePeriod** The complete period for vested shares purchased during presale
-- **supplyOfferedPct** The percentage of the initial token supply offered to presale's contributors
-- **fundingForBeneficiaryPct** The percentage of the presale raised funds which are to be transferred to the board's discretionnary vault
 - **openDate** The date upon which the presale will be open [if 0, the presale can be open manually later]
+- **reserveRatio** Reserve ratio of the bonding curve
 - **batchBlocks** The number of blocks trading batches will last
-- **maximumTapRateIncreasePct** The maximum percentage tap rates can be increased at once
-- **maximumTapFloorDecreasePct** The maximum percentage tap floors can be decreased at once
-
-### Finalize instance
-> Set collateralization settings
-
-```
-template.finalizeInstance(virtualSupplies, virtualBalances, slippages, daiRate, daiFloor)
-```
-
-- **virtualSupplies** Array of [daiVirtualSupply, antVirtualSupply] to set up the market maker
-- **virtualBalances** Array of [daiVirtualBalance, antVirtualBalance] to set up the market maker
-- **slippages** Array of [daiMaxSlippage, antMaxSlippage] to set up the maximum per-batch price slippage in the market maker
-- **daiRate** The rate at which DAIs are to be tapped
-- **daiFloor** The floor above which the DAI reserve pool is to be kept
+- **slippage** To set up the maximum per-batch price slippage in the market maker
 
 ## Permissions
 
@@ -101,69 +46,8 @@ _Handle apps and permissions_
 
 | App               | Permission            | Grantee          | Manager          |
 | ----------------- | --------------------- | ---------------- | ---------------- |
-| Kernel            | APP_MANAGER           | Voting `[SHARE]` | Voting `[SHARE]` |
-| ACL               | CREATE_PERMISSIONS    | Voting `[SHARE]` | Voting `[SHARE]` |
-| EVMScriptRegistry | REGISTRY_MANAGER      | Voting `[SHARE]` | Voting `[SHARE]` |
-| EVMScriptRegistry | REGISTRY_ADD_EXECUTOR | Voting `[SHARE]` | Voting `[SHARE]` |
-
-
-### Board
-
-#### TokenManager
-_Represents board's membership_
-
-| App                     | Permission      | Grantee          | Manager          |
-| ----------------------- | --------------- | ---------------- | ---------------- |
-| Token Manager `[BOARD]` | MINT            | Voting `[BOARD]` | Voting `[SHARE]` |
-| Token Manager `[BOARD]` | BURN            | Voting `[BOARD]` | Voting `[SHARE]` |
-| Token Manager `[BOARD]` | ISSUE           | NULL             | NULL             |
-| Token Manager `[BOARD]` | ASSIGN          | NULL             | NULL             |
-| Token Manager `[BOARD]` | REVOKE_VESTINGS | NULL             | NULL             |
-
-#### Voting
-_Enforces board's decisions_
-
-| App              | Permission     | Grantee                 | Manager          |
-| ---------------- | -------------- | ----------------------- | ---------------- |
-| Voting `[BOARD]` | CREATE_VOTES   | Token Manager `[BOARD]` | Voting `[SHARE]` |
-| Voting `[BOARD]` | MODIFY_QUORUM  | Voting `[BOARD]`        | Voting `[SHARE]` |
-| Voting `[BOARD]` | MODIFY_SUPPORT | Voting `[BOARD]`        | Voting `[SHARE]` |
-
-#### Vault and Finance
-_Handle board's funds_
-
-| App     | Permission          | Grantee          | Manager          |
-| ------- | ------------------- | ---------------- | ---------------- |
-| Vault   | TRANSFER            | Finance          | Voting `[SHARE]` |
-| Finance | CREATE_PAYMENTS     | Voting `[BOARD]` | Voting `[SHARE]` |
-| Finance | EXECUTE_PAYMENTS    | Voting `[BOARD]` | Voting `[SHARE]` |
-| Finance | MANAGE_PAYMENTS     | Voting `[BOARD]` | Voting `[SHARE]` |
-| Finance | CHANGE_PERIOD       | NULL             | NULL             |
-| Finance | CHANGE_BUDGETS_ROLE | NULL             | NULL             |
-
-### Share Holders
-
-#### TokenManager
-_Handle shares / bonds minting and burning_
-
-| App                     | Permission      | Grantee              | Manager          |
-| ----------------------- | --------------- | -------------------- | ---------------- |
-| Token Manager `[SHARE]` | MINT            | MarketMaker          | Voting `[SHARE]` |
-| Token Manager `[SHARE]` | BURN            | MarketMaker, Presale | Voting `[SHARE]` |
-| Token Manager `[SHARE]` | ISSUE           | Presale              | Voting `[SHARE]` |
-| Token Manager `[SHARE]` | ASSIGN          | Presale              | Voting `[SHARE]` |
-| Token Manager `[SHARE]` | REVOKE_VESTINGS | Presale              | Voting `[SHARE]` |
-
-
-#### Voting
-_Enforces share holders decisions_
-
-
-| App              | Permission     | Grantee                 | Manager          |
-| ---------------- | -------------- | ----------------------- | ---------------- |
-| Voting `[SHARE]` | CREATE_VOTES   | Token Manager `[BOARD]` | Voting `[SHARE]` |
-| Voting `[SHARE]` | MODIFY_QUORUM  | Voting `[SHARE]`        | Voting `[SHARE]` |
-| Voting `[SHARE]` | MODIFY_SUPPORT | Voting `[SHARE]`        | Voting `[SHARE]` |
+| Kernel            | APP_MANAGER           | Owner            | Owner            |
+| ACL               | CREATE_PERMISSIONS    | Owner            | Owner            |
 
 
 ### Fundraising apps
@@ -173,14 +57,14 @@ _Handle market maker funds_
 
 | App  | Permission             | Grantee          | Manager          |
 | ---- | ---------------------- | ---------------- | ---------------- |
-| Pool | SAFE_EXECUTE           | Voting `[SHARE]` | Voting `[SHARE]` |
-| Pool | ADD_PROTECTED_TOKEN    | Controller       | Voting `[SHARE]` |
+| Pool | SAFE_EXECUTE           | Owner            | Owner            |
+| Pool | ADD_PROTECTED_TOKEN    | Controller       | Owner            |
 | Pool | REMOVE_PROTECTED_TOKEN | NULL             | NULL             |
 | Pool | EXECUTE                | NULL             | NULL             |
 | Pool | DESIGNATE_SIGNER       | NULL             | NULL             |
 | Pool | ADD_PRESIGNED_HASH     | NULL             | NULL             |
 | Pool | RUN_SCRIPT             | NULL             | NULL             |
-| Pool | TRANSFER               | Tap, MarketMaker | Voting `[SHARE]` |
+| Pool | TRANSFER               | MarketMaker      | Owner            |
 
 
 #### Presale
@@ -188,8 +72,8 @@ _Handle preliminary sale_
 
 | App     | Permission | Grantee    | Manager          |
 | ------- | ---------- | ---------- | ---------------- |
-| Presale | OPEN       | Controller | Voting `[SHARE]` |
-| Presale | CONTRIBUTE | Controller | Voting `[SHARE]` |
+| Presale | OPEN       | Controller | Owner            |
+| Presale | CONTRIBUTE | Controller | Owner            |
 
 
 #### MarketMaker
@@ -197,49 +81,33 @@ _Handle buy and sell orders_
 
 | App         | Permission              | Grantee    | Manager          |
 | ----------- | ----------------------- | ---------- | ---------------- |
-| MarketMaker | OPEN                    | Controller | Voting `[SHARE]` |
+| MarketMaker | OPEN                    | Controller | Owner            |
 | MarketMaker | UPDATE_FORMULA          | NULL       | NULL             |
-| MarketMaker | UPDATE_BENEFICIARY      | Controller | Voting `[SHARE]` |
-| MarketMaker | UPDATE_FEES             | Controller | Voting `[SHARE]` |
-| MarketMaker | ADD_COLLATERAL_TOKEN    | Controller | Voting `[SHARE]` |
-| MarketMaker | REMOVE_COLLATERAL_TOKEN | Controller | Voting `[SHARE]` |
-| MarketMaker | UPDATE_COLLATERAL_TOKEN | Controller | Voting `[SHARE]` |
-| MarketMaker | OPEN_BUY_ORDER          | Controller | Voting `[SHARE]` |
-| MarketMaker | OPEN_SELL_ORDER         | Controller | Voting `[SHARE]` |
-
-#### Tap
-_Control the flow of funds from reserve to board_
-
-| App | Permission                            | Grantee    | Manager          |
-| --- | ------------------------------------- | ---------- | ---------------- |
-| Tap | UPDATE_CONTROLLER                     | NULL       | NULL             |
-| Tap | UPDATE_RESERVE                        | NULL       | NULL             |
-| Tap | UPDATE_BENEFICIARY                    | Controller | Voting `[SHARE]` |
-| Tap | UPDATE_MAXIMUM_TAP_RATE_INCREASE_PCT  | Controller | Voting `[SHARE]` |
-| Tap | UPDATE_MAXIMUM_TAP_FLOOR_DECREASE_PCT | Controller | Voting `[SHARE]` |
-| Tap | ADD_TAPPED_TOKEN                      | Controller | Voting `[SHARE]` |
-| Tap | REMOVE_TAPPED_TOKEN                   | NULL       | NULL             |
-| Tap | UPDATE_TAPPED_TOKEN                   | Controller | Voting `[SHARE]` |
-| Tap | RESET_TAPPED_TOKEN                    | Controller | Voting `[SHARE]` |
-| Tap | WITHDRAW                              | Controller | Voting `[SHARE]` |
+| MarketMaker | UPDATE_BENEFICIARY      | Controller | Owner            |
+| MarketMaker | UPDATE_FEES             | Controller | Owner            |
+| MarketMaker | ADD_COLLATERAL_TOKEN    | Controller | Owner            |
+| MarketMaker | REMOVE_COLLATERAL_TOKEN | Controller | Owner            |
+| MarketMaker | UPDATE_COLLATERAL_TOKEN | Controller | Owner            |
+| MarketMaker | OPEN_BUY_ORDER          | Controller | Owner            |
+| MarketMaker | OPEN_SELL_ORDER         | Controller | Owner            |
 
 #### Controller
 _API contract forwarding transactions to relevant contracts_
 
-| App        | Permission                            | Grantee          | Manager          |
-| ---------- | ------------------------------------- | ---------------- | ---------------- |
-| Controller | UPDATE_BENEFICIARY                    | Voting `[SHARE]` | Voting `[SHARE]` |
-| Controller | UPDATE_FEES                           | Voting `[SHARE]` | Voting `[SHARE]` |
-| Controller | ADD_COLLATERAL_TOKEN                  | Voting `[SHARE]` | Voting `[SHARE]` |
-| Controller | REMOVE_COLLATERAL_TOKEN               | Voting `[SHARE]` | Voting `[SHARE]` |
-| Controller | UPDATE_COLLATERAL_TOKEN               | Voting `[SHARE]` | Voting `[SHARE]` |
-| Controller | UPDATE_MAXIMUM_TAP_RATE_INCREASE_PCT  | Voting `[SHARE]` | Voting `[SHARE]` |
-| Controller | UPDATE_MAXIMUM_TAP_FLOOR_DECREASE_PCT | Voting `[SHARE]` | Voting `[SHARE]` |
-| Controller | ADD_TOKEN_TAP                         | Voting `[SHARE]` | Voting `[SHARE]` |
-| Controller | UPDATE_TOKEN_TAP                      | Voting `[SHARE]` | Voting `[SHARE]` |
-| Controller | OPEN_PRESALE                          | Voting `[BOARD]` | Voting `[SHARE]` |
-| Controller | OPEN_TRADING                          | Presale          | Voting `[SHARE]` |
-| Controller | CONTRIBUTE                            | Any              | Voting `[SHARE]` |
-| Controller | OPEN_BUY_ORDER                        | Any              | Voting `[SHARE]` |
-| Controller | OPEN_SELL_ORDER                       | Any              | Voting `[SHARE]` |
-| Controller | WITHDRAW                              | Any              | Voting `[SHARE]` |
+| App        | Permission                            | Grantee | Manager |
+| ---------- | ------------------------------------- | ------- | ------- |
+| Controller | UPDATE_BENEFICIARY                    | NULL    | NULL    |
+| Controller | UPDATE_FEES                           | NULL    | NULL    |
+| Controller | ADD_COLLATERAL_TOKEN                  | Owner   | Owner   |
+| Controller | REMOVE_COLLATERAL_TOKEN               | Owner   | Owner   |
+| Controller | UPDATE_COLLATERAL_TOKEN               | Owner   | Owner   |
+| Controller | UPDATE_MAXIMUM_TAP_RATE_INCREASE_PCT  | NULL    | NULL    |
+| Controller | UPDATE_MAXIMUM_TAP_FLOOR_DECREASE_PCT | NULL    | NULL    |
+| Controller | ADD_TOKEN_TAP                         | NULL    | NULL    |
+| Controller | UPDATE_TOKEN_TAP                      | NULL    | NULL    |
+| Controller | OPEN_PRESALE                          | Owner   | Owner   |
+| Controller | OPEN_TRADING                          | Presale | Owner   |
+| Controller | CONTRIBUTE                            | Any     | Owner   |
+| Controller | OPEN_BUY_ORDER                        | Any     | Owner   |
+| Controller | OPEN_SELL_ORDER                       | Any     | Owner   |
+| Controller | WITHDRAW                              | NULL    | NULL    |

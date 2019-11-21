@@ -7,7 +7,7 @@ const deployAragonID = require('@aragon/id/scripts/deploy-beta-aragonid')
 const deployDAOFactory = require('@aragon/os/scripts/deploy-daofactory')
 
 module.exports = class TemplateDeployer {
-  constructor(web3, artifacts, owner, options = { verbose: true /* TODO */ }) {
+  constructor(web3, artifacts, owner, options = { verbose: false }) {
     this.web3 = web3
     this.artifacts = artifacts
     this.owner = owner
@@ -43,7 +43,9 @@ module.exports = class TemplateDeployer {
     if ((await this.isLocal()) && !(await this._isPackageRegistered(templateName))) {
       await this._registerPackage(templateName, template)
     }
-    await this._writeArappFile(templateName, template)
+    if (!this.options.isTest) {
+      await this._writeArappFile(templateName, template)
+    }
   }
 
   async _checkAppsDeployment() {
@@ -63,7 +65,7 @@ module.exports = class TemplateDeployer {
     if (this.options.ens) {
       this.log(`Using provided ENS: ${this.options.ens}`)
       this.ens = ENS.at(this.options.ens)
-    } else if (await this.arappENS()) {
+    } else if (!this.options.isTest && await this.arappENS()) {
       const ensAddress = await this.arappENS()
       this.log(`Using ENS from arapp json file: ${ensAddress}`)
       this.ens = ENS.at(ensAddress)

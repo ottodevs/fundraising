@@ -1,4 +1,4 @@
-const { APPS } = require('@aragon/templates-shared/helpers/apps')
+const { TEMPLATE_NAME, CONTRACT_NAME, APPS } = require('./helpers/constants.js')
 const getAccounts = require('@aragon/os/scripts/helpers/get-accounts')
 const TemplatesDeployer = require('./TemplatesDeployer')
 
@@ -7,7 +7,7 @@ const errorOut = message => {
   throw new Error(message)
 }
 
-module.exports = async function deployTemplate(web3, artifacts, templateName, contractName, apps = APPS) {
+module.exports = async function deployTemplate(web3, artifacts, templateName = TEMPLATE_NAME, contractName = CONTRACT_NAME, apps = APPS) {
   let { ens, owner, verbose, daoFactory, miniMeFactory } = require('yargs')
     .option('e', { alias: 'ens', describe: 'ENS address', type: 'string' })
     .option('o', { alias: 'owner', describe: 'Sender address. Will use first address if no one is given.', type: 'string' })

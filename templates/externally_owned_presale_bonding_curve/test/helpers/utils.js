@@ -1,24 +1,7 @@
 const Kernel = artifacts.require('Kernel')
 const abi = require('web3-eth-abi')
-const { hash: namehash } = require('eth-ens-namehash')
 
-const APPS = [
-  { name: 'agent', contractName: 'Agent' },
-  { name: 'aragon-fundraising', contractName: 'AragonFundraisingController' },
-  { name: 'bancor-formula', contractName: 'BancorFormula' },
-  { name: 'batched-bancor-market-maker', contractName: 'BatchedBancorMarketMaker' },
-  { name: 'finance', contractName: 'Finance' },
-  { name: 'presale', contractName: 'BalanceRedirectPresale' },
-  { name: 'vault', contractName: 'Vault' },
-  { name: 'voting', contractName: 'Voting' },
-  { name: 'tap', contractName: 'TapDisabled' },
-  { name: 'token-manager', contractName: 'TokenManager' },
-]
-
-const APP_IDS = APPS.reduce((ids, { name }) => {
-  ids[name] = namehash(`${name}.aragonpm.eth`)
-  return ids
-}, {})
+const { APP_IDS } = require('../../lib/helpers/constants.js')
 
 const decodeEvents = ({ receipt }, contractAbi, eventName) => {
   const eventAbi = contractAbi.filter(abi => abi.name === eventName && abi.type === 'event')[0]
@@ -46,6 +29,5 @@ const getInstalledAppsById = receipt => {
 }
 
 module.exports = {
-  APP_IDS,
   getInstalledAppsById,
 }

@@ -62,14 +62,14 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
 
     function installFundraisingApps(
         address       _owner,
+        string        _id,
         ERC20         _collateralToken,
         MiniMeToken   _bondedToken,
         uint64        _period,
         uint256       _exchangeRate,
-        uint256       _futureReserveRatio,
         uint64        _openDate,
+        uint256       _reserveRatio,
         uint256       _batchBlocks,
-        string        _id,
         uint256       _slippage
     )
         external
@@ -90,7 +90,7 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
             _collateralToken,
             _period,
             _exchangeRate,
-            _futureReserveRatio,
+            _reserveRatio,
             _openDate
         );
         _initializeMarketMaker(_owner, _batchBlocks);
@@ -100,7 +100,7 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
         _setupFundraisingPermissions(acl, _owner);
 
         // setup collateral
-        _setupCollateral(acl, _owner, _collateralToken, _futureReserveRatio, _slippage);
+        _setupCollateral(acl, _owner, _collateralToken, _reserveRatio, _slippage);
         // clear DAO permissions
         _transferRootPermissionsFromTemplateAndFinalizeDAO(dao, _owner, _owner);
         // register id
@@ -170,7 +170,7 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
         ACL        _acl,
         address    _owner,
         ERC20      _collateralToken,
-        uint256     _futureReserveRatio,
+        uint256     _reserveRatio,
         uint256    _slippage
     )
         internal
@@ -184,7 +184,7 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
             _collateralToken,
             0,
             0,
-            uint32(_futureReserveRatio),
+            uint32(_reserveRatio),
             _slippage,
             0,
             0

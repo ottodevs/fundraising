@@ -112,7 +112,7 @@ permissions:
   manager: owner
 - app: presale
   role: OPEN_TRADING_ROLE
-  grantee: owner
+  grantee: presale
   manager: owner
 - app: controller
   role: CONTRIBUTE_ROLE

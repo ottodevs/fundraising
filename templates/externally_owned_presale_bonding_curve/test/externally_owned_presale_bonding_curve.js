@@ -20,37 +20,20 @@ const PublicResolver = artifacts.require('PublicResolver')
 const Tap = artifacts.require('TapDisabled')
 const Template = artifacts.require('EOPBCTemplate')
 
-const { APP_IDS, getInstalledAppsById } = require('./helpers/utils')
+const { TEMPLATE_NAME, CONTRACT_NAME, APPS } = require('../lib/helpers/constants.js')
+const { getInstalledAppsById } = require('./helpers/utils.js')
 const {
-  ZERO_ADDRESS,
-  DAYS,
-  WEEKS,
   MONTHS,
   PRESALE_PERIOD,
   PRESALE_EXCHANGE_RATE,
-  VIRTUAL_SUPPLIES,
-  VIRTUAL_BALANCES,
   RESERVE_RATIOS,
   SLIPPAGES,
-  RATES,
-  FLOORS,
   BATCH_BLOCKS,
 } = require('@ablack/fundraising-shared-test-helpers/constants')
-const ANY_ADDRESS = { address: require('@ablack/fundraising-shared-test-helpers/constants').ANY_ADDRESS }
-const START_DATE = new Date().getTime() + MONTHS
 
-const TEMPLATE_NAME = 'externally-owned-presale-bonding-curve-template'
-const CONTRACT_NAME = 'EOPBCTemplate'
-// TODO
-const APPS = [
-  { name: 'agent', contractName: 'Agent' },
-  { name: 'token-manager', contractName: 'TokenManager' },
-  { name: 'bancor-formula', contractName: 'BancorFormula' },
-  { name: 'batched-bancor-market-maker', contractName: 'BatchedBancorMarketMaker' },
-  { name: 'tap', contractName: 'TapDisabled' },
-  { name: 'aragon-fundraising', contractName: 'AragonFundraisingController' },
-  { name: 'presale', contractName: 'BalanceRedirectPresale' },
-]
+const ANY_ADDRESS = { address: require('@ablack/fundraising-shared-test-helpers/constants').ANY_ADDRESS }
+
+const START_DATE = new Date().getTime() + MONTHS
 
 contract('externally owned presale bonding curve', ([root, owner, member1, member2, member3]) => {
   let daoID, template, dao, acl, ens, minimeFactory
@@ -60,7 +43,9 @@ contract('externally owned presale bonding curve', ([root, owner, member1, membe
   const ownerObject = { address: owner }
 
   before('deploy fundraising template and ENS', async () => {
-    const deployer = new TemplatesDeployer(web3, artifacts, root, { apps: APPS })
+    console.log('root', root)
+    console.log('owner', owner)
+    const deployer = new TemplatesDeployer(web3, artifacts, root, { apps: APPS, isTest: true, verbose: true })
     const { templateAddress, ensAddress } = await deployer.deploy(TEMPLATE_NAME, CONTRACT_NAME)
     ens = ENS.at(ensAddress)
     template = Template.at(templateAddress)
@@ -198,8 +183,8 @@ contract('externally owned presale bonding curve', ([root, owner, member1, membe
           const collateralInfo = await marketMaker.getCollateralToken(collateralToken.address)
 
           assert.isTrue(collateralInfo[0], 'collateral not whitelisted')
-          assert.equal(collateralInfo[1].toNumber(), 0, 'collateral virtual supply should be ' + VIRTUAL_SUPPLIES[0])
-          assert.equal(collateralInfo[2].toNumber(), 0, 'collateral virtual balance should be ' + VIRTUAL_BALANCES[0])
+          assert.equal(collateralInfo[1].toNumber(), 0, 'collateral virtual supply should be 0')
+          assert.equal(collateralInfo[2].toNumber(), 0, 'collateral virtual balance should be 0')
           assert.equal(collateralInfo[3].toNumber(), RESERVE_RATIOS[0], 'collateral reserve ratio should be ' + RESERVE_RATIOS[0])
           assert.equal(collateralInfo[4].toNumber(), SLIPPAGES[0], 'collateral maximum slippage should be ' + SLIPPAGES[0])
 
@@ -243,14 +228,14 @@ contract('externally owned presale bonding curve', ([root, owner, member1, membe
         daoID = randomId()
         fundraisingReceipt = await template.installFundraisingApps(
           owner,
+          daoID,
           collateralToken.address,
           bondedToken.address,
           PRESALE_PERIOD,
           PRESALE_EXCHANGE_RATE,
-          RESERVE_RATIOS[0],
           START_DATE,
+          RESERVE_RATIOS[0],
           BATCH_BLOCKS,
-          daoID,
           SLIPPAGES[0],
           {
             from: owner,
