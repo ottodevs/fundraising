@@ -43,8 +43,6 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
         address bondedTokenManager;
     }
 
-    mapping (address => Cache) private cache;
-
     constructor(
         DAOFactory              _daoFactory,
         ENS                     _ens,
@@ -83,9 +81,10 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
         (Kernel dao, ACL acl) = _createDAO();
 
         // install fundraising apps
-        _proxifyFundraisingApps(dao, _bondedToken);
+        Cache memory cache = _proxifyFundraisingApps(dao, _bondedToken);
 
         _initializePresale(
+            cache,
             _owner,
             _collateralToken,
             _period,
@@ -93,25 +92,23 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
             _reserveRatio,
             _openDate
         );
-        _initializeMarketMaker(_owner, _batchBlocks);
-        _initializeController();
+        _initializeMarketMaker(cache, _owner, _batchBlocks);
+        _initializeController(cache);
 
         // setup fundraising apps permissions
-        _setupFundraisingPermissions(acl, _owner);
+        _setupFundraisingPermissions(acl, _owner, cache);
 
         // setup collateral
-        _setupCollateral(acl, _owner, _collateralToken, _reserveRatio, _slippage);
+        _setupCollateral(acl, _owner, cache, _collateralToken, _reserveRatio, _slippage);
         // clear DAO permissions
         _transferRootPermissionsFromTemplateAndFinalizeDAO(dao, _owner, _owner);
         // register id
         _registerID(_id, address(dao));
-        // clear cache
-        _clearCache();
     }
 
     /***** internal apps installation functions *****/
 
-    function _proxifyFundraisingApps(Kernel _dao, MiniMeToken _bondedToken) internal {
+    function _proxifyFundraisingApps(Kernel _dao, MiniMeToken _bondedToken) internal returns (Cache cache) {
         Agent reserve = _installNonDefaultAgentApp(_dao);
         Presale presale = Presale(_registerApp(_dao, PRESALE_ID));
         MarketMaker marketMaker = MarketMaker(_registerApp(_dao, MARKET_MAKER_ID));
@@ -120,12 +117,13 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
         // bonded token manager
         TokenManager bondedTokenManager = _installTokenManagerApp(_dao, _bondedToken, BONDED_TOKEN_TRANSFERABLE, BONDED_TOKEN_MAX_PER_ACCOUNT);
 
-        _cacheFundraisingApps(reserve, presale, marketMaker, tap, controller, bondedTokenManager);
+        cache = _cacheFundraisingApps(reserve, presale, marketMaker, tap, controller, bondedTokenManager);
     }
 
     /***** internal apps initialization functions *****/
 
     function _initializePresale(
+        Cache memory _cache,
         address _beneficiary,
         ERC20   _collateralToken,
         uint64  _period,
@@ -135,7 +133,7 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
     )
         internal
     {
-        (Agent reserve, Presale presale,,, Controller controller, TokenManager tokenManager) = _fundraisingAppsCache();
+        (Agent reserve, Presale presale,,, Controller controller, TokenManager tokenManager) = _fundraisingAppsCache(_cache);
 
         presale.initialize(
             controller,
@@ -150,16 +148,16 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
         );
     }
 
-    function _initializeMarketMaker(address _beneficiary, uint256 _batchBlocks) internal {
+    function _initializeMarketMaker(Cache memory _cache, address _beneficiary, uint256 _batchBlocks) internal {
         IBancorFormula bancorFormula = IBancorFormula(_latestVersionAppBase(BANCOR_FORMULA_ID));
 
-        (Agent reserve,, MarketMaker marketMaker,, Controller controller, TokenManager tokenManager) = _fundraisingAppsCache();
+        (Agent reserve,, MarketMaker marketMaker,, Controller controller, TokenManager tokenManager) = _fundraisingAppsCache(_cache);
 
         marketMaker.initialize(controller, tokenManager, bancorFormula, reserve, _beneficiary, _batchBlocks, BUY_FEE_PCT, SELL_FEE_PCT);
     }
 
-    function _initializeController() internal {
-        (Agent reserve, IPresale presale, MarketMaker marketMaker, Tap tap, Controller controller,) = _fundraisingAppsCache();
+    function _initializeController(Cache memory _cache) internal {
+        (Agent reserve, IPresale presale, MarketMaker marketMaker, Tap tap, Controller controller,) = _fundraisingAppsCache(_cache);
         address[] memory toReset = new address[](0);
         controller.initialize(presale, marketMaker, reserve, tap, toReset);
     }
@@ -169,13 +167,14 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
     function _setupCollateral(
         ACL        _acl,
         address    _owner,
+        Cache memory _cache,
         ERC20      _collateralToken,
         uint256     _reserveRatio,
         uint256    _slippage
     )
         internal
     {
-        (,,,, Controller controller,) = _fundraisingAppsCache();
+        (,,,, Controller controller,) = _fundraisingAppsCache(_cache);
 
         // create and grant ADD_COLLATERAL_TOKEN_ROLE to this template
         _createPermissionForTemplate(_acl, controller, controller.ADD_COLLATERAL_TOKEN_ROLE());
@@ -195,10 +194,10 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
 
     /***** internal permissions functions *****/
 
-    function _setupFundraisingPermissions(ACL _acl, address _owner) internal {
+    function _setupFundraisingPermissions(ACL _acl, address _owner, Cache memory _cache) internal {
         address ANY_ENTITY = _acl.ANY_ENTITY();
 
-        (Agent reserve, Presale presale, MarketMaker marketMaker,, Controller controller, TokenManager tokenManager) = _fundraisingAppsCache();
+        (Agent reserve, Presale presale, MarketMaker marketMaker,, Controller controller, TokenManager tokenManager) = _fundraisingAppsCache(_cache);
 
         // token manager
         address[] memory grantees = new address[](2);
@@ -247,55 +246,27 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
         TokenManager _tokenManager
     )
         internal
+        returns (Cache memory cache)
     {
-        Cache storage c = cache[msg.sender];
-
-        c.reserve = address(_reserve);
-        c.presale = address(_presale);
-        c.marketMaker = address(_marketMaker);
-        c.tap = address(_tap);
-        c.controller = address(_controller);
-        c.bondedTokenManager = address(_tokenManager);
+        cache.reserve = address(_reserve);
+        cache.presale = address(_presale);
+        cache.marketMaker = address(_marketMaker);
+        cache.tap = address(_tap);
+        cache.controller = address(_controller);
+        cache.bondedTokenManager = address(_tokenManager);
     }
 
-    function _fundraisingAppsCache()
+    function _fundraisingAppsCache(Cache memory _cache)
         internal
         view
         returns (Agent reserve, Presale presale, MarketMaker marketMaker, Tap tap, Controller controller, TokenManager tokenManager)
     {
-        Cache storage c = cache[msg.sender];
-
-        reserve = Agent(c.reserve);
-        presale = Presale(c.presale);
-        marketMaker = MarketMaker(c.marketMaker);
-        tap = Tap(c.tap);
-        controller = Controller(c.controller);
-        tokenManager = TokenManager(c.bondedTokenManager);
-    }
-
-    function _clearCache() internal {
-        Cache storage c = cache[msg.sender];
-
-        delete c.reserve;
-        delete c.presale;
-        delete c.marketMaker;
-        delete c.tap;
-        delete c.controller;
-        delete c.bondedTokenManager;
-    }
-
-    /***** internal check functions *****/
-
-    function _ensureFundraisingAppsCache() internal view {
-        Cache storage c = cache[msg.sender];
-        require(
-            c.reserve != address(0) &&
-            c.presale != address(0) &&
-            c.marketMaker != address(0) &&
-            c.controller != address(0) &&
-            c.bondedTokenManager != address(0),
-            ERROR_MISSING_CACHE
-        );
+        reserve = Agent(_cache.reserve);
+        presale = Presale(_cache.presale);
+        marketMaker = MarketMaker(_cache.marketMaker);
+        tap = Tap(_cache.tap);
+        controller = Controller(_cache.controller);
+        tokenManager = TokenManager(_cache.bondedTokenManager);
     }
 
     /***** internal utils functions *****/
