@@ -250,7 +250,7 @@ contract('externally owned presale bonding curve', ([root, owner, member1, membe
       const FINANCE_PERIOD = 60 * 60 * 24 * 15 // 15 days
 
       createDAO(FINANCE_PERIOD)
-      itCostsUpTo(7.1e6)
+      itCostsUpTo(7e6)
       itSetupsDAOCorrectly(FINANCE_PERIOD)
     })
 
@@ -258,7 +258,7 @@ contract('externally owned presale bonding curve', ([root, owner, member1, membe
       const FINANCE_PERIOD = 0 // use default
 
       createDAO(FINANCE_PERIOD)
-      itCostsUpTo(7.1e6)
+      itCostsUpTo(7e6)
       itSetupsDAOCorrectly(FINANCE_PERIOD)
     })
   })

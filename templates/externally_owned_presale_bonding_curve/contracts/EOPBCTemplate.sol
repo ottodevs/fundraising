@@ -19,28 +19,40 @@ import {TapDisabled as Tap} from "@ablack/fundraising-tap/contracts/TapDisabled.
  * Besides there is no tap mechanism, as it's not intended for fundraising, but just for bonding tokens.
 */
 contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
-    string    private constant ERROR_BAD_SETTINGS     = "EOPBC_TEMPLATE_BAD_SETTINGS";
-    string    private constant ERROR_MISSING_CACHE    = "EOPBC_TEMPLATE_MISSING_CACHE";
+    string    private constant ERROR_BAD_SETTINGS            = "EOPBC_TEMPLATE_BAD_SETTINGS";
 
     bool      private constant BONDED_TOKEN_TRANSFERABLE     = true;
-    uint8     private constant BONDED_TOKEN_DECIMALS   = uint8(18);
+    uint8     private constant BONDED_TOKEN_DECIMALS         = uint8(18);
     uint256   private constant BONDED_TOKEN_MAX_PER_ACCOUNT  = uint256(0);
 
-    uint256   private constant BUY_FEE_PCT            = 0;
-    uint256   private constant SELL_FEE_PCT           = 0;
+    uint256   private constant BUY_FEE_PCT                   = 0;
+    uint256   private constant SELL_FEE_PCT                  = 0;
 
-    bytes32   private constant BANCOR_FORMULA_ID      = 0xd71dde5e4bea1928026c1779bde7ed27bd7ef3d0ce9802e4117631eb6fa4ed7d;
-    bytes32   private constant PRESALE_ID             = 0x5de9bbdeaf6584c220c7b7f1922383bcd8bbcd4b48832080afd9d5ebf9a04df5;
-    bytes32   private constant MARKET_MAKER_ID        = 0xc2bb88ab974c474221f15f691ed9da38be2f5d37364180cec05403c656981bf0;
-    bytes32   private constant ARAGON_FUNDRAISING_ID  = 0x668ac370eed7e5861234d1c0a1e512686f53594fcb887e5bcecc35675a4becac;
+    bytes32   private constant BANCOR_FORMULA_ID             = 0xd71dde5e4bea1928026c1779bde7ed27bd7ef3d0ce9802e4117631eb6fa4ed7d;
+    bytes32   private constant PRESALE_ID                    = 0x5de9bbdeaf6584c220c7b7f1922383bcd8bbcd4b48832080afd9d5ebf9a04df5;
+    bytes32   private constant MARKET_MAKER_ID               = 0xc2bb88ab974c474221f15f691ed9da38be2f5d37364180cec05403c656981bf0;
+    bytes32   private constant ARAGON_FUNDRAISING_ID         = 0x668ac370eed7e5861234d1c0a1e512686f53594fcb887e5bcecc35675a4becac;
 
-    struct Cache {
-        address reserve;
-        address presale;
-        address marketMaker;
-        address tap;
-        address controller;
-        address bondedTokenManager;
+    struct FundraisingApps {
+        Agent           reserve;
+        Presale         presale;
+        MarketMaker     marketMaker;
+        Tap             tap;
+        Controller      controller;
+        TokenManager    bondedTokenManager;
+    }
+
+    struct FundraisingParams {
+        address       owner;
+        string        id;
+        ERC20         collateralToken;
+        MiniMeToken   bondedToken;
+        uint64        period;
+        uint256       exchangeRate;
+        uint64        openDate;
+        uint256       reserveRatio;
+        uint256       batchBlocks;
+        uint256       slippage;
     }
 
     constructor(
@@ -81,34 +93,38 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
         (Kernel dao, ACL acl) = _createDAO();
 
         // install fundraising apps
-        Cache memory cache = _proxifyFundraisingApps(dao, _bondedToken);
+        FundraisingApps memory fundraisingApps = _proxifyFundraisingApps(dao, _bondedToken);
 
-        _initializePresale(
-            cache,
+        FundraisingParams memory fundraisingParams = _cacheFundraisingParams(
             _owner,
+            _id,
             _collateralToken,
+            _bondedToken,
             _period,
             _exchangeRate,
+            _openDate,
             _reserveRatio,
-            _openDate
+            _batchBlocks,
+            _slippage
         );
-        _initializeMarketMaker(cache, _owner, _batchBlocks);
-        _initializeController(cache);
+        _initializePresale(fundraisingApps, fundraisingParams);
+        _initializeMarketMaker(fundraisingApps, fundraisingParams.owner, fundraisingParams.batchBlocks);
+        _initializeController(fundraisingApps);
 
         // setup fundraising apps permissions
-        _setupFundraisingPermissions(acl, _owner, cache);
+        _setupFundraisingPermissions(acl, fundraisingParams.owner, fundraisingApps);
 
         // setup collateral
-        _setupCollateral(acl, _owner, cache, _collateralToken, _reserveRatio, _slippage);
+        _setupCollateral(acl, fundraisingParams.owner, fundraisingApps, fundraisingParams.collateralToken, fundraisingParams.reserveRatio, fundraisingParams.slippage);
         // clear DAO permissions
-        _transferRootPermissionsFromTemplateAndFinalizeDAO(dao, _owner, _owner);
+        _transferRootPermissionsFromTemplateAndFinalizeDAO(dao, fundraisingParams.owner, fundraisingParams.owner);
         // register id
-        _registerID(_id, address(dao));
+        _registerID(fundraisingParams.id, address(dao));
     }
 
     /***** internal apps installation functions *****/
 
-    function _proxifyFundraisingApps(Kernel _dao, MiniMeToken _bondedToken) internal returns (Cache cache) {
+    function _proxifyFundraisingApps(Kernel _dao, MiniMeToken _bondedToken) internal returns (FundraisingApps fundraisingApps) {
         Agent reserve = _installNonDefaultAgentApp(_dao);
         Presale presale = Presale(_registerApp(_dao, PRESALE_ID));
         MarketMaker marketMaker = MarketMaker(_registerApp(_dao, MARKET_MAKER_ID));
@@ -117,69 +133,69 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
         // bonded token manager
         TokenManager bondedTokenManager = _installTokenManagerApp(_dao, _bondedToken, BONDED_TOKEN_TRANSFERABLE, BONDED_TOKEN_MAX_PER_ACCOUNT);
 
-        cache = _cacheFundraisingApps(reserve, presale, marketMaker, tap, controller, bondedTokenManager);
+        fundraisingApps = _cacheFundraisingApps(reserve, presale, marketMaker, tap, controller, bondedTokenManager);
     }
 
     /***** internal apps initialization functions *****/
 
-    function _initializePresale(
-        Cache memory _cache,
-        address _beneficiary,
-        ERC20   _collateralToken,
-        uint64  _period,
-        uint256 _exchangeRate,
-        uint256 _futureReserveRatio,
-        uint64  _openDate
-    )
+    function _initializePresale(FundraisingApps memory _fundraisingApps, FundraisingParams memory _fundraisingParams)
         internal
     {
-        (Agent reserve, Presale presale,,, Controller controller, TokenManager tokenManager) = _fundraisingAppsCache(_cache);
-
-        presale.initialize(
-            controller,
-            tokenManager,
-            reserve,
-            _beneficiary,
-            _collateralToken,
-            _period,
-            _exchangeRate,
-            _futureReserveRatio,
-            _openDate
+        _fundraisingApps.presale.initialize(
+            _fundraisingApps.controller,
+            _fundraisingApps.bondedTokenManager,
+            _fundraisingApps.reserve,
+            _fundraisingParams.owner,
+            _fundraisingParams.collateralToken,
+            _fundraisingParams.period,
+            _fundraisingParams.exchangeRate,
+            _fundraisingParams.reserveRatio,
+            _fundraisingParams.openDate
         );
     }
 
-    function _initializeMarketMaker(Cache memory _cache, address _beneficiary, uint256 _batchBlocks) internal {
+    function _initializeMarketMaker(FundraisingApps memory _fundraisingApps, address _beneficiary, uint256 _batchBlocks) internal {
         IBancorFormula bancorFormula = IBancorFormula(_latestVersionAppBase(BANCOR_FORMULA_ID));
 
-        (Agent reserve,, MarketMaker marketMaker,, Controller controller, TokenManager tokenManager) = _fundraisingAppsCache(_cache);
-
-        marketMaker.initialize(controller, tokenManager, bancorFormula, reserve, _beneficiary, _batchBlocks, BUY_FEE_PCT, SELL_FEE_PCT);
+        _fundraisingApps.marketMaker.initialize(
+            _fundraisingApps.controller,
+            _fundraisingApps.bondedTokenManager,
+            bancorFormula,
+            _fundraisingApps.reserve,
+            _beneficiary,
+            _batchBlocks,
+            BUY_FEE_PCT,
+            SELL_FEE_PCT
+        );
     }
 
-    function _initializeController(Cache memory _cache) internal {
-        (Agent reserve, IPresale presale, MarketMaker marketMaker, Tap tap, Controller controller,) = _fundraisingAppsCache(_cache);
+    function _initializeController(FundraisingApps memory _fundraisingApps) internal {
         address[] memory toReset = new address[](0);
-        controller.initialize(presale, marketMaker, reserve, tap, toReset);
+        _fundraisingApps.controller.initialize(
+            _fundraisingApps.presale,
+            _fundraisingApps.marketMaker,
+            _fundraisingApps.reserve,
+            _fundraisingApps.tap,
+            toReset
+        );
     }
 
     /***** internal setup functions *****/
 
     function _setupCollateral(
-        ACL        _acl,
-        address    _owner,
-        Cache memory _cache,
-        ERC20      _collateralToken,
-        uint256     _reserveRatio,
-        uint256    _slippage
+        ACL                    _acl,
+        address                _owner,
+        FundraisingApps memory _fundraisingApps,
+        ERC20                  _collateralToken,
+        uint256                _reserveRatio,
+        uint256                _slippage
     )
         internal
     {
-        (,,,, Controller controller,) = _fundraisingAppsCache(_cache);
-
         // create and grant ADD_COLLATERAL_TOKEN_ROLE to this template
-        _createPermissionForTemplate(_acl, controller, controller.ADD_COLLATERAL_TOKEN_ROLE());
+        _createPermissionForTemplate(_acl, _fundraisingApps.controller, _fundraisingApps.controller.ADD_COLLATERAL_TOKEN_ROLE());
         // add ANT as a protected collateral [but not as a tapped token]
-        controller.addCollateralToken(
+        _fundraisingApps.controller.addCollateralToken(
             _collateralToken,
             0,
             0,
@@ -189,84 +205,98 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
             0
         );
         // transfer ADD_COLLATERAL_TOKEN_ROLE
-        _transferPermissionFromTemplate(_acl, controller, _owner, controller.ADD_COLLATERAL_TOKEN_ROLE(), _owner);
+        _transferPermissionFromTemplate(_acl, _fundraisingApps.controller, _owner, _fundraisingApps.controller.ADD_COLLATERAL_TOKEN_ROLE(), _owner);
     }
 
     /***** internal permissions functions *****/
 
-    function _setupFundraisingPermissions(ACL _acl, address _owner, Cache memory _cache) internal {
+    function _setupFundraisingPermissions(ACL _acl, address _owner, FundraisingApps memory _fundraisingApps) internal {
         address ANY_ENTITY = _acl.ANY_ENTITY();
-
-        (Agent reserve, Presale presale, MarketMaker marketMaker,, Controller controller, TokenManager tokenManager) = _fundraisingAppsCache(_cache);
 
         // token manager
         address[] memory grantees = new address[](2);
-        grantees[0] = address(marketMaker);
-        grantees[1] = address(presale);
-        _createPermissions(_acl, grantees, tokenManager, tokenManager.MINT_ROLE(), _owner);
-        _acl.createPermission(marketMaker, tokenManager, tokenManager.BURN_ROLE(), _owner);
+        grantees[0] = address(_fundraisingApps.marketMaker);
+        grantees[1] = address(_fundraisingApps.presale);
+        _createPermissions(_acl, grantees, _fundraisingApps.bondedTokenManager, _fundraisingApps.bondedTokenManager.MINT_ROLE(), _owner);
+        _acl.createPermission(_fundraisingApps.marketMaker, _fundraisingApps.bondedTokenManager, _fundraisingApps.bondedTokenManager.BURN_ROLE(), _owner);
         // reserve
-        _acl.createPermission(_owner, reserve, reserve.SAFE_EXECUTE_ROLE(), _owner);
-        _acl.createPermission(controller, reserve, reserve.ADD_PROTECTED_TOKEN_ROLE(), _owner);
-        _acl.createPermission(marketMaker, reserve, reserve.TRANSFER_ROLE(), _owner);
+        _acl.createPermission(_owner, _fundraisingApps.reserve, _fundraisingApps.reserve.SAFE_EXECUTE_ROLE(), _owner);
+        _acl.createPermission(_fundraisingApps.controller, _fundraisingApps.reserve, _fundraisingApps.reserve.ADD_PROTECTED_TOKEN_ROLE(), _owner);
+        _acl.createPermission(_fundraisingApps.marketMaker, _fundraisingApps.reserve, _fundraisingApps.reserve.TRANSFER_ROLE(), _owner);
         // presale
-        _acl.createPermission(controller, presale, presale.OPEN_ROLE(), _owner);
-        _acl.createPermission(controller, presale, presale.CONTRIBUTE_ROLE(), _owner);
+        _acl.createPermission(_fundraisingApps.controller, _fundraisingApps.presale, _fundraisingApps.presale.OPEN_ROLE(), _owner);
+        _acl.createPermission(_fundraisingApps.controller, _fundraisingApps.presale, _fundraisingApps.presale.CONTRIBUTE_ROLE(), _owner);
         // market maker
-        _acl.createPermission(controller, marketMaker, marketMaker.OPEN_ROLE(), _owner);
-        _acl.createPermission(controller, marketMaker, marketMaker.UPDATE_BENEFICIARY_ROLE(), _owner);
-        _acl.createPermission(controller, marketMaker, marketMaker.UPDATE_FEES_ROLE(), _owner);
-        _acl.createPermission(controller, marketMaker, marketMaker.ADD_COLLATERAL_TOKEN_ROLE(), _owner);
-        _acl.createPermission(controller, marketMaker, marketMaker.REMOVE_COLLATERAL_TOKEN_ROLE(), _owner);
-        _acl.createPermission(controller, marketMaker, marketMaker.UPDATE_COLLATERAL_TOKEN_ROLE(), _owner);
-        _acl.createPermission(controller, marketMaker, marketMaker.OPEN_BUY_ORDER_ROLE(), _owner);
-        _acl.createPermission(controller, marketMaker, marketMaker.OPEN_SELL_ORDER_ROLE(), _owner);
+        _acl.createPermission(_fundraisingApps.controller, _fundraisingApps.marketMaker, _fundraisingApps.marketMaker.OPEN_ROLE(), _owner);
+        _acl.createPermission(_fundraisingApps.controller, _fundraisingApps.marketMaker, _fundraisingApps.marketMaker.UPDATE_BENEFICIARY_ROLE(), _owner);
+        _acl.createPermission(_fundraisingApps.controller, _fundraisingApps.marketMaker, _fundraisingApps.marketMaker.UPDATE_FEES_ROLE(), _owner);
+        _acl.createPermission(_fundraisingApps.controller, _fundraisingApps.marketMaker, _fundraisingApps.marketMaker.ADD_COLLATERAL_TOKEN_ROLE(), _owner);
+        _acl.createPermission(_fundraisingApps.controller, _fundraisingApps.marketMaker, _fundraisingApps.marketMaker.REMOVE_COLLATERAL_TOKEN_ROLE(), _owner);
+        _acl.createPermission(_fundraisingApps.controller, _fundraisingApps.marketMaker, _fundraisingApps.marketMaker.UPDATE_COLLATERAL_TOKEN_ROLE(), _owner);
+        _acl.createPermission(_fundraisingApps.controller, _fundraisingApps.marketMaker, _fundraisingApps.marketMaker.OPEN_BUY_ORDER_ROLE(), _owner);
+        _acl.createPermission(_fundraisingApps.controller, _fundraisingApps.marketMaker, _fundraisingApps.marketMaker.OPEN_SELL_ORDER_ROLE(), _owner);
         // controller
-        _acl.createPermission(_owner, controller, controller.UPDATE_BENEFICIARY_ROLE(), _owner);
-        _acl.createPermission(_owner, controller, controller.UPDATE_FEES_ROLE(), _owner);
+        _acl.createPermission(_owner, _fundraisingApps.controller, _fundraisingApps.controller.UPDATE_BENEFICIARY_ROLE(), _owner);
+        _acl.createPermission(_owner, _fundraisingApps.controller, _fundraisingApps.controller.UPDATE_FEES_ROLE(), _owner);
         // ADD_COLLATERAL_TOKEN_ROLE is handled later [after collaterals have been added]
-        // _acl.createPermission(_owner, controller, controller.ADD_COLLATERAL_TOKEN_ROLE(), _owner);
-        _acl.createPermission(_owner, controller, controller.REMOVE_COLLATERAL_TOKEN_ROLE(), _owner);
-        _acl.createPermission(_owner, controller, controller.UPDATE_COLLATERAL_TOKEN_ROLE(), _owner);
-        _acl.createPermission(_owner, controller, controller.OPEN_PRESALE_ROLE(), _owner);
-        _acl.createPermission(presale, controller, controller.OPEN_TRADING_ROLE(), _owner);
-        _acl.createPermission(ANY_ENTITY, controller, controller.CONTRIBUTE_ROLE(), _owner);
-        _acl.createPermission(ANY_ENTITY, controller, controller.OPEN_BUY_ORDER_ROLE(), _owner);
-        _acl.createPermission(ANY_ENTITY, controller, controller.OPEN_SELL_ORDER_ROLE(), _owner);
+        // _acl.createPermission(_owner, _fundraisingApps.controller, _fundraisingApps.controller.ADD_COLLATERAL_TOKEN_ROLE(), _owner);
+        _acl.createPermission(_owner, _fundraisingApps.controller, _fundraisingApps.controller.REMOVE_COLLATERAL_TOKEN_ROLE(), _owner);
+        _acl.createPermission(_owner, _fundraisingApps.controller, _fundraisingApps.controller.UPDATE_COLLATERAL_TOKEN_ROLE(), _owner);
+        _acl.createPermission(_owner, _fundraisingApps.controller, _fundraisingApps.controller.OPEN_PRESALE_ROLE(), _owner);
+        _acl.createPermission(_fundraisingApps.presale, _fundraisingApps.controller, _fundraisingApps.controller.OPEN_TRADING_ROLE(), _owner);
+        _acl.createPermission(ANY_ENTITY, _fundraisingApps.controller, _fundraisingApps.controller.CONTRIBUTE_ROLE(), _owner);
+        _acl.createPermission(ANY_ENTITY, _fundraisingApps.controller, _fundraisingApps.controller.OPEN_BUY_ORDER_ROLE(), _owner);
+        _acl.createPermission(ANY_ENTITY, _fundraisingApps.controller, _fundraisingApps.controller.OPEN_SELL_ORDER_ROLE(), _owner);
     }
 
     /***** internal cache functions *****/
 
     function _cacheFundraisingApps(
-        Agent _reserve,
-        Presale _presale,
-        MarketMaker _marketMaker,
-        Tap _tap,
-        Controller _controller,
-        TokenManager _tokenManager
+        Agent          _reserve,
+        Presale        _presale,
+        MarketMaker    _marketMaker,
+        Tap            _tap,
+        Controller     _controller,
+        TokenManager   _tokenManager
     )
         internal
-        returns (Cache memory cache)
+        returns (FundraisingApps memory fundraisingApps)
     {
-        cache.reserve = address(_reserve);
-        cache.presale = address(_presale);
-        cache.marketMaker = address(_marketMaker);
-        cache.tap = address(_tap);
-        cache.controller = address(_controller);
-        cache.bondedTokenManager = address(_tokenManager);
+        fundraisingApps.reserve            = _reserve;
+        fundraisingApps.presale            = _presale;
+        fundraisingApps.marketMaker        = _marketMaker;
+        fundraisingApps.tap                = _tap;
+        fundraisingApps.controller         = _controller;
+        fundraisingApps.bondedTokenManager = _tokenManager;
     }
 
-    function _fundraisingAppsCache(Cache memory _cache)
+    function _cacheFundraisingParams(
+        address       _owner,
+        string        _id,
+        ERC20         _collateralToken,
+        MiniMeToken   _bondedToken,
+        uint64        _period,
+        uint256       _exchangeRate,
+        uint64        _openDate,
+        uint256       _reserveRatio,
+        uint256       _batchBlocks,
+        uint256       _slippage
+    )
         internal
-        view
-        returns (Agent reserve, Presale presale, MarketMaker marketMaker, Tap tap, Controller controller, TokenManager tokenManager)
+        returns (FundraisingParams fundraisingParams)
     {
-        reserve = Agent(_cache.reserve);
-        presale = Presale(_cache.presale);
-        marketMaker = MarketMaker(_cache.marketMaker);
-        tap = Tap(_cache.tap);
-        controller = Controller(_cache.controller);
-        tokenManager = TokenManager(_cache.bondedTokenManager);
+        fundraisingParams = FundraisingParams({
+            owner:           _owner,
+            id:              _id,
+            collateralToken: _collateralToken,
+            bondedToken:     _bondedToken,
+            period:          _period,
+            exchangeRate:    _exchangeRate,
+            openDate:        _openDate,
+            reserveRatio:    _reserveRatio,
+            batchBlocks:     _batchBlocks,
+            slippage:        _slippage
+        });
     }
 
     /***** internal utils functions *****/
