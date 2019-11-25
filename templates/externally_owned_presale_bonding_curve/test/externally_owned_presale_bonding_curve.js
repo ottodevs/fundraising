@@ -35,6 +35,8 @@ const ANY_ADDRESS = { address: require('@ablack/fundraising-shared-test-helpers/
 
 const START_DATE = new Date().getTime() + MONTHS
 
+const ERROR_BAD_SETTINGS = 'EOPBC_TEMPLATE_BAD_SETTINGS'
+
 contract('externally owned presale bonding curve', ([root, owner, member1, member2, member3]) => {
   let daoID, template, dao, acl, ens, minimeFactory
   let reserve, presale, marketMaker, tap, controller, bondedTokenManager, bondedToken
@@ -63,6 +65,93 @@ contract('externally owned presale bonding curve', ([root, owner, member1, membe
     daoID = randomId()
 
     context('Fundraising transaction', () => {
+      it('fails if owner is address zero', async () => {
+        daoID = randomId()
+        await assertRevert(
+          template.installFundraisingApps(
+            '0x00',
+            daoID,
+            collateralToken.address,
+            bondedToken.address,
+            PRESALE_PERIOD,
+            PRESALE_EXCHANGE_RATE,
+            START_DATE,
+            RESERVE_RATIOS[0],
+            BATCH_BLOCKS,
+            SLIPPAGES[0],
+            {
+              from: owner,
+            }
+          ),
+          ERROR_BAD_SETTINGS
+        )
+      })
+
+      it('fails if collateral token is not a contract', async () => {
+        daoID = randomId()
+        await assertRevert(
+          template.installFundraisingApps(
+            owner,
+            daoID,
+            owner,
+            bondedToken.address,
+            PRESALE_PERIOD,
+            PRESALE_EXCHANGE_RATE,
+            START_DATE,
+            RESERVE_RATIOS[0],
+            BATCH_BLOCKS,
+            SLIPPAGES[0],
+            {
+              from: owner,
+            }
+          ),
+          ERROR_BAD_SETTINGS
+        )
+      })
+
+      it('fails if bonded token is not a contract', async () => {
+        daoID = randomId()
+        await assertRevert(
+          template.installFundraisingApps(
+            owner,
+            daoID,
+            collateralToken.address,
+            owner,
+            PRESALE_PERIOD,
+            PRESALE_EXCHANGE_RATE,
+            START_DATE,
+            RESERVE_RATIOS[0],
+            BATCH_BLOCKS,
+            SLIPPAGES[0],
+            {
+              from: owner,
+            }
+          ),
+          ERROR_BAD_SETTINGS
+        )
+      })
+
+      it('fails if id is empty', async () => {
+        daoID = randomId()
+        await assertRevert(
+          template.installFundraisingApps(
+            owner,
+            '',
+            collateralToken.address,
+            bondedToken.address,
+            PRESALE_PERIOD,
+            PRESALE_EXCHANGE_RATE,
+            START_DATE,
+            RESERVE_RATIOS[0],
+            BATCH_BLOCKS,
+            SLIPPAGES[0],
+            {
+              from: owner,
+            }
+          ),
+          ERROR_BAD_SETTINGS
+        )
+      })
     })
   })
 
