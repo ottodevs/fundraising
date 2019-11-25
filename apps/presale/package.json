@@ -1,10 +1,11 @@
 {
   "name": "@ablack/fundraising-presale",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Aragon Black <contact@aragon.black>",
   "contributors": [
     "Alejandro Santander <palebluedot@gmail.com>",
-    "Olivier Sarrouy <olivier@aragon.black>"
+    "Olivier Sarrouy <olivier@aragon.black>",
+    "ßingen <bingen@aragon.one>"
   ],
   "license": "(GPL-3.0-or-later OR AGPL-3.0-or-later)",
   "homepage": "https://github.com/AragonBlack/fundraising",

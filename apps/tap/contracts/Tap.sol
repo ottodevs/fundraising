@@ -10,8 +10,10 @@ import "@aragon/os/contracts/lib/token/ERC20.sol";
 import "@aragon/apps-vault/contracts/Vault.sol";
 import "@ablack/fundraising-shared-interfaces/contracts/IAragonFundraisingController.sol";
 
+import "./ITap.sol";
 
-contract Tap is TimeHelpers, EtherTokenConstant, IsContract, AragonApp {
+
+contract Tap is TimeHelpers, EtherTokenConstant, IsContract, AragonApp, ITap {
     using SafeERC20 for ERC20;
     using SafeMath  for uint256;
 
