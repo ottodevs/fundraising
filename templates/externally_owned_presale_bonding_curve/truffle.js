@@ -1,6 +1,6 @@
 const truffle = require('@aragon/os/truffle-config')
 
-const gasLimit = 10e6 - 1
+const gasLimit = 8e6 - 1
 
 truffle.solc.optimizer.runs = 100
 truffle.networks.rpc.gas = gasLimit
