@@ -260,6 +260,7 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
         TokenManager   _tokenManager
     )
         internal
+        pure
         returns (FundraisingApps memory fundraisingApps)
     {
         fundraisingApps.reserve            = _reserve;
@@ -283,7 +284,7 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
         uint256       _slippage
     )
         internal
-        returns (FundraisingParams fundraisingParams)
+        pure
     {
         fundraisingParams = FundraisingParams({
             owner:           _owner,
