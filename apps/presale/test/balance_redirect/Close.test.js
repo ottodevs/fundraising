@@ -13,7 +13,7 @@ const assertExternalEvent = require('@ablack/fundraising-shared-test-helpers/ass
 const CONTRIBUTION = 1e18
 const BUYER_BALANCE = 2 * CONTRIBUTION
 
-contract('Presale, close() functionality', ([anyone, appManager, buyer1]) => {
+contract('Balance Redirect Presale, close() functionality', ([anyone, appManager, buyer1]) => {
   const itAllowsTheSaleToBeClosed = (startDate, contribution) => {
     before(async () => {
       await prepareDefaultSetup(this, appManager)

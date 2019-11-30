@@ -10,7 +10,7 @@ const APPS = [
   { name: 'batched-bancor-market-maker', contractName: 'BatchedBancorMarketMaker' },
   { name: 'tap', contractName: 'TapDisabled' },
   { name: 'aragon-fundraising', contractName: 'AragonFundraisingController' },
-  { name: 'presale', contractName: 'BalanceRedirectPresale' },
+  { name: 'balance-redirect-presale', contractName: 'BalanceRedirectPresale' },
 ]
 
 const APP_IDS = APPS.reduce((ids, { name }) => {

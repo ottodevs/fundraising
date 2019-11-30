@@ -48,6 +48,9 @@ _Handle apps and permissions_
 | ----------------- | --------------------- | ---------------- | ---------------- |
 | Kernel            | APP_MANAGER           | Owner            | Owner            |
 | ACL               | CREATE_PERMISSIONS    | Owner            | Owner            |
+| Token Manager     | MINT                  | MarketMaker      | Owner            |
+| Token Manager     | MINT                  | Presale          | Owner            |
+| Token Manager     | BURN                  | MarketMaker      | Owner            |
 
 
 ### Fundraising apps
@@ -55,16 +58,16 @@ _Handle apps and permissions_
 #### Agent / Reserve
 _Handle market maker funds_
 
-| App  | Permission             | Grantee          | Manager          |
-| ---- | ---------------------- | ---------------- | ---------------- |
-| Pool | SAFE_EXECUTE           | Owner            | Owner            |
-| Pool | ADD_PROTECTED_TOKEN    | Controller       | Owner            |
-| Pool | REMOVE_PROTECTED_TOKEN | NULL             | NULL             |
-| Pool | EXECUTE                | NULL             | NULL             |
-| Pool | DESIGNATE_SIGNER       | NULL             | NULL             |
-| Pool | ADD_PRESIGNED_HASH     | NULL             | NULL             |
-| Pool | RUN_SCRIPT             | NULL             | NULL             |
-| Pool | TRANSFER               | MarketMaker      | Owner            |
+| App     | Permission             | Grantee          | Manager          |
+| ------- | ---------------------- | ---------------- | ---------------- |
+| Reserve | SAFE_EXECUTE           | Owner            | Owner            |
+| Reserve | ADD_PROTECTED_TOKEN    | Controller       | Owner            |
+| Reserve | REMOVE_PROTECTED_TOKEN | NULL             | NULL             |
+| Reserve | EXECUTE                | NULL             | NULL             |
+| Reserve | DESIGNATE_SIGNER       | NULL             | NULL             |
+| Reserve | ADD_PRESIGNED_HASH     | NULL             | NULL             |
+| Reserve | RUN_SCRIPT             | NULL             | NULL             |
+| Reserve | TRANSFER               | MarketMaker      | Owner            |
 
 
 #### Presale
@@ -96,8 +99,8 @@ _API contract forwarding transactions to relevant contracts_
 
 | App        | Permission                            | Grantee | Manager |
 | ---------- | ------------------------------------- | ------- | ------- |
-| Controller | UPDATE_BENEFICIARY                    | NULL    | NULL    |
-| Controller | UPDATE_FEES                           | NULL    | NULL    |
+| Controller | UPDATE_BENEFICIARY                    | Owner   | Owner   |
+| Controller | UPDATE_FEES                           | Owner   | Owner   |
 | Controller | ADD_COLLATERAL_TOKEN                  | Owner   | Owner   |
 | Controller | REMOVE_COLLATERAL_TOKEN               | Owner   | Owner   |
 | Controller | UPDATE_COLLATERAL_TOKEN               | Owner   | Owner   |

@@ -15,7 +15,7 @@ const Kernel = artifacts.require('Kernel')
 const MarketMaker = artifacts.require('BatchedBancorMarketMaker')
 const MiniMeToken = artifacts.require('MiniMeToken')
 const MiniMeTokenFactory = artifacts.require('MiniMeTokenFactory')
-const Presale = artifacts.require('BalanceRedirectPresale')
+const BalanceRedirectPresale = artifacts.require('BalanceRedirectPresale')
 const PublicResolver = artifacts.require('PublicResolver')
 const Tap = artifacts.require('TapDisabled')
 const Template = artifacts.require('EOPBCTemplate')
@@ -45,8 +45,6 @@ contract('externally owned presale bonding curve', ([root, owner, member1, membe
   const ownerObject = { address: owner }
 
   before('deploy fundraising template and ENS', async () => {
-    console.log('root', root)
-    console.log('owner', owner)
     const deployer = new TemplatesDeployer(web3, artifacts, root, { apps: APPS, isTest: true, verbose: true })
     const { templateAddress, ensAddress } = await deployer.deploy(TEMPLATE_NAME, CONTRACT_NAME)
     ens = ENS.at(ensAddress)
@@ -68,7 +66,7 @@ contract('externally owned presale bonding curve', ([root, owner, member1, membe
       it('fails if owner is address zero', async () => {
         daoID = randomId()
         await assertRevert(
-          template.installFundraisingApps(
+          template.newInstance(
             '0x00',
             daoID,
             collateralToken.address,
@@ -90,7 +88,7 @@ contract('externally owned presale bonding curve', ([root, owner, member1, membe
       it('fails if collateral token is not a contract', async () => {
         daoID = randomId()
         await assertRevert(
-          template.installFundraisingApps(
+          template.newInstance(
             owner,
             daoID,
             owner,
@@ -112,7 +110,7 @@ contract('externally owned presale bonding curve', ([root, owner, member1, membe
       it('fails if bonded token is not a contract', async () => {
         daoID = randomId()
         await assertRevert(
-          template.installFundraisingApps(
+          template.newInstance(
             owner,
             daoID,
             collateralToken.address,
@@ -134,7 +132,7 @@ contract('externally owned presale bonding curve', ([root, owner, member1, membe
       it('fails if id is empty', async () => {
         daoID = randomId()
         await assertRevert(
-          template.installFundraisingApps(
+          template.newInstance(
             owner,
             '',
             collateralToken.address,
@@ -167,8 +165,8 @@ contract('externally owned presale bonding curve', ([root, owner, member1, membe
       assert.equal(installedAppsDuringFundraising.agent.length, 1, 'should have installed 1 agent app')
       reserve = Agent.at(installedAppsDuringFundraising.agent[0])
 
-      assert.equal(installedAppsDuringFundraising.presale.length, 1, 'should have installed 1 presale app')
-      presale = Presale.at(installedAppsDuringFundraising.presale[0])
+      assert.equal(installedAppsDuringFundraising['balance-redirect-presale'].length, 1, 'should have installed 1 presale app')
+      presale = BalanceRedirectPresale.at(installedAppsDuringFundraising['balance-redirect-presale'][0])
 
       assert.equal(installedAppsDuringFundraising['batched-bancor-market-maker'].length, 1, 'should have installed 1 market-maker app')
       marketMaker = MarketMaker.at(installedAppsDuringFundraising['batched-bancor-market-maker'][0])
@@ -315,7 +313,7 @@ contract('externally owned presale bonding curve', ([root, owner, member1, membe
     const createDAO = financePeriod => {
       beforeEach('create fundraising entity with multisig', async () => {
         daoID = randomId()
-        fundraisingReceipt = await template.installFundraisingApps(
+        fundraisingReceipt = await template.newInstance(
           owner,
           daoID,
           collateralToken.address,
