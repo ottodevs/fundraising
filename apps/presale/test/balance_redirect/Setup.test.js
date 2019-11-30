@@ -8,12 +8,14 @@ const { PRESALE_STATE, prepareDefaultSetup, initializePresale, defaultDeployPara
 const { tokenExchangeRate, now } = require('../common/utils')
 const { assertRevert } = require('@aragon/test-helpers/assertThrow')
 
+const TokenManager = artifacts.require('TokenManager')
+
 const ERROR_INVALID_STATE = 'PRESALE_INVALID_STATE'
 const ERROR_INVALID_OPEN_DATE = 'PRESALE_INVALID_OPEN_DATE'
 const ERROR_TIME_PERIOD_ZERO = 'PRESALE_TIME_PERIOD_ZERO'
 const ERROR_INVALID_TIME_PERIOD = 'PRESALE_INVALID_TIME_PERIOD'
 
-contract('Presale, setup', ([anyone, appManager, someEOA]) => {
+contract('Balance Redirect Presale, setup', ([anyone, appManager, someEOA]) => {
   describe('When deploying the app with valid parameters', () => {
     const itSetupsTheAppCorrectly = startDate => {
       let presaleInitializationTx
@@ -56,14 +58,15 @@ contract('Presale, setup', ([anyone, appManager, someEOA]) => {
         expect((await this.presale.state()).toNumber()).to.equal(PRESALE_STATE.PENDING)
       })
 
-      it('Project token is deployed and set in the app', async () => {
-        expect(web3.isAddress(this.projectToken.address)).to.equal(true)
-        expect(await this.presale.token()).to.equal(this.projectToken.address)
-      })
-
       it('Contribution token is deployed and set in the app', async () => {
         expect(web3.isAddress(this.contributionToken.address)).to.equal(true)
         expect(await this.presale.contributionToken()).to.equal(this.contributionToken.address)
+      })
+
+      it('Project token is deployed and set in the app', async () => {
+        expect(web3.isAddress(this.projectToken.address)).to.equal(true)
+        const tokenManager = await TokenManager.at(await this.presale.tokenManager())
+        expect(await tokenManager.token()).to.equal(this.projectToken.address)
       })
 
       it('TokenManager is deployed, set in the app, and controls the project token', async () => {

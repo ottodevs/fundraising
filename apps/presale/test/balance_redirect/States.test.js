@@ -8,7 +8,7 @@ const getState = async test => {
 
 const CONTRIBUTION = 1e18
 
-contract('Presale, states validation', ([anyone, appManager, buyer]) => {
+contract('Balance Redirect Presale, states validation', ([anyone, appManager, buyer]) => {
   const itManagesStateCorrectly = startDate => {
     describe('When a sale is deployed', () => {
       before(async () => {

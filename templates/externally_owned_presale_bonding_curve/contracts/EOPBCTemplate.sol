@@ -1,6 +1,5 @@
 pragma solidity 0.4.24;
 
-import "@aragon/os/contracts/common/EtherTokenConstant.sol";
 import "@aragon/os/contracts/lib/token/ERC20.sol";
 import "@aragon/templates-shared/contracts/BaseTemplate.sol";
 import "@aragon/apps-agent/contracts/Agent.sol";
@@ -8,7 +7,7 @@ import "@ablack/fundraising-bancor-formula/contracts/BancorFormula.sol";
 import {AragonFundraisingController as Controller} from "@ablack/fundraising-aragon-fundraising/contracts/AragonFundraisingController.sol";
 import {BatchedBancorMarketMaker as MarketMaker} from "@ablack/fundraising-batched-bancor-market-maker/contracts/BatchedBancorMarketMaker.sol";
 import "@ablack/fundraising-presale/contracts/IPresale.sol";
-import {BalanceRedirectPresale as Presale} from "@ablack/fundraising-presale/contracts/BalanceRedirectPresale.sol";
+import "@ablack/fundraising-presale/contracts/BalanceRedirectPresale.sol";
 import {TapDisabled as Tap} from "@ablack/fundraising-tap/contracts/TapDisabled.sol";
 
 
@@ -18,7 +17,7 @@ import {TapDisabled as Tap} from "@ablack/fundraising-tap/contracts/TapDisabled.
  * It doesn't have Aragon core apps, it's externally owned.
  * Besides there is no tap mechanism, as it's not intended for fundraising, but just for bonding tokens.
 */
-contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
+contract EOPBCTemplate is BaseTemplate {
     string    private constant ERROR_BAD_SETTINGS            = "EOPBC_TEMPLATE_BAD_SETTINGS";
 
     bool      private constant BONDED_TOKEN_TRANSFERABLE     = true;
@@ -29,17 +28,17 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
     uint256   private constant SELL_FEE_PCT                  = 0;
 
     bytes32   private constant BANCOR_FORMULA_ID             = 0xd71dde5e4bea1928026c1779bde7ed27bd7ef3d0ce9802e4117631eb6fa4ed7d;
-    bytes32   private constant PRESALE_ID                    = 0x5de9bbdeaf6584c220c7b7f1922383bcd8bbcd4b48832080afd9d5ebf9a04df5;
+    bytes32   private constant BALANCE_REDIRECT_PRESALE_ID   = 0x48361b4c873d034ec84268a195d412cf39969c26f09b3520478aa29e08033a3a;
     bytes32   private constant MARKET_MAKER_ID               = 0xc2bb88ab974c474221f15f691ed9da38be2f5d37364180cec05403c656981bf0;
     bytes32   private constant ARAGON_FUNDRAISING_ID         = 0x668ac370eed7e5861234d1c0a1e512686f53594fcb887e5bcecc35675a4becac;
 
     struct FundraisingApps {
-        Agent           reserve;
-        Presale         presale;
-        MarketMaker     marketMaker;
-        Tap             tap;
-        Controller      controller;
-        TokenManager    bondedTokenManager;
+        Agent                   reserve;
+        BalanceRedirectPresale  presale;
+        MarketMaker             marketMaker;
+        Tap                     tap;
+        Controller              controller;
+        TokenManager            bondedTokenManager;
     }
 
     struct FundraisingParams {
@@ -70,7 +69,7 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
 
     /***** external functions *****/
 
-    function installFundraisingApps(
+    function newInstance(
         address       _owner,
         string        _id,
         ERC20         _collateralToken,
@@ -124,9 +123,9 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
 
     /***** internal apps installation functions *****/
 
-    function _proxifyFundraisingApps(Kernel _dao, MiniMeToken _bondedToken) internal returns (FundraisingApps fundraisingApps) {
+    function _proxifyFundraisingApps(Kernel _dao, MiniMeToken _bondedToken) internal returns (FundraisingApps memory fundraisingApps) {
         Agent reserve = _installNonDefaultAgentApp(_dao);
-        Presale presale = Presale(_registerApp(_dao, PRESALE_ID));
+        BalanceRedirectPresale presale = BalanceRedirectPresale(_registerApp(_dao, BALANCE_REDIRECT_PRESALE_ID));
         MarketMaker marketMaker = MarketMaker(_registerApp(_dao, MARKET_MAKER_ID));
         Tap tap = new Tap();
         Controller controller = Controller(_registerApp(_dao, ARAGON_FUNDRAISING_ID));
@@ -252,12 +251,12 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
     /***** internal cache functions *****/
 
     function _cacheFundraisingApps(
-        Agent          _reserve,
-        Presale        _presale,
-        MarketMaker    _marketMaker,
-        Tap            _tap,
-        Controller     _controller,
-        TokenManager   _tokenManager
+        Agent                   _reserve,
+        BalanceRedirectPresale  _presale,
+        MarketMaker             _marketMaker,
+        Tap                     _tap,
+        Controller              _controller,
+        TokenManager            _tokenManager
     )
         internal
         pure
@@ -285,6 +284,7 @@ contract EOPBCTemplate is EtherTokenConstant, BaseTemplate {
     )
         internal
         pure
+        returns (FundraisingParams memory fundraisingParams)
     {
         fundraisingParams = FundraisingParams({
             owner:           _owner,

@@ -252,7 +252,7 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
 
     function _setPeriod(uint64 _period) internal {
         require(_period > 0, ERROR_TIME_PERIOD_ZERO);
-        require(openDate == 0 || openDate + _period > getTimestamp64(), ERROR_INVALID_TIME_PERIOD);
+        require(openDate == 0 || openDate.add(_period) > getTimestamp64(), ERROR_INVALID_TIME_PERIOD);
         period = _period;
     }
 
