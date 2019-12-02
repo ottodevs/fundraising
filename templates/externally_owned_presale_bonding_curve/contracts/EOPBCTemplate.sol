@@ -94,7 +94,7 @@ contract EOPBCTemplate is BaseTemplate {
         // install fundraising apps
         FundraisingApps memory fundraisingApps = _proxifyFundraisingApps(dao, _bondedToken);
 
-        FundraisingParams memory fundraisingParams = _cacheFundraisingParams(
+        FundraisingParams memory fundraisingParams = _packFundraisingParams(
             _owner,
             _id,
             _collateralToken,
@@ -132,7 +132,7 @@ contract EOPBCTemplate is BaseTemplate {
         // bonded token manager
         TokenManager bondedTokenManager = _installTokenManagerApp(_dao, _bondedToken, BONDED_TOKEN_TRANSFERABLE, BONDED_TOKEN_MAX_PER_ACCOUNT);
 
-        fundraisingApps = _cacheFundraisingApps(reserve, presale, marketMaker, tap, controller, bondedTokenManager);
+        fundraisingApps = _packFundraisingApps(reserve, presale, marketMaker, tap, controller, bondedTokenManager);
     }
 
     /***** internal apps initialization functions *****/
@@ -248,9 +248,9 @@ contract EOPBCTemplate is BaseTemplate {
         _acl.createPermission(ANY_ENTITY, _fundraisingApps.controller, _fundraisingApps.controller.OPEN_SELL_ORDER_ROLE(), _owner);
     }
 
-    /***** internal cache functions *****/
+    /***** internal struct packing functions (to avoid stack too deep issues) *****/
 
-    function _cacheFundraisingApps(
+    function _packFundraisingApps(
         Agent                   _reserve,
         BalanceRedirectPresale  _presale,
         MarketMaker             _marketMaker,
@@ -270,7 +270,7 @@ contract EOPBCTemplate is BaseTemplate {
         fundraisingApps.bondedTokenManager = _tokenManager;
     }
 
-    function _cacheFundraisingParams(
+    function _packFundraisingParams(
         address       _owner,
         string        _id,
         ERC20         _collateralToken,
