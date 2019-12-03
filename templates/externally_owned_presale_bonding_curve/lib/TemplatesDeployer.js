@@ -23,7 +23,7 @@ module.exports = class TemplateDeployer {
 
   async deployTemplate(contractName) {
     const Template = this.artifacts.require(contractName)
-    const template = await Template.new(this.daoFactory.address, this.ens.address, this.miniMeFactory.address, this.aragonID.address)
+    const template = await Template.new(this.daoFactory.address, this.ens.address, this.aragonID.address)
     let receipt = await this.web3.eth.getTransactionReceipt(template.transactionHash)
     this.log(`Gas used to deploy template:  + ${receipt.gasUsed}`)
     await logDeploy(template)
@@ -35,7 +35,6 @@ module.exports = class TemplateDeployer {
     await this._fetchOrDeployAPM()
     await this._fetchOrDeployAragonID()
     await this._fetchOrDeployDAOFactory()
-    await this._fetchOrDeployMiniMeFactory()
     await this._checkAppsDeployment()
   }
 
@@ -131,17 +130,6 @@ module.exports = class TemplateDeployer {
       const { daoFactory } = await deployDAOFactory(null, { artifacts: this.artifacts, owner: this.owner, verbose: this.verbose })
       this.log('Deployed DAOFactory:', daoFactory.address)
       this.daoFactory = daoFactory
-    }
-  }
-
-  async _fetchOrDeployMiniMeFactory() {
-    const MiniMeTokenFactory = this.artifacts.require('MiniMeTokenFactory')
-    if (this.options.miniMeFactory) {
-      this.log(`Using provided MiniMeTokenFactory: ${this.options.miniMeFactory}`)
-      this.miniMeFactory = MiniMeTokenFactory.at(this.options.miniMeFactory)
-    } else {
-      this.miniMeFactory = await MiniMeTokenFactory.new()
-      this.log('Deployed MiniMeTokenFactory:', this.miniMeFactory.address)
     }
   }
 
