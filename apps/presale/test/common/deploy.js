@@ -115,6 +115,9 @@ const deploy = {
     const receipt = await test.dao.newAppInstance(hash('presale.aragonpm.eth'), appBase.address, '0x', false, { from: appManager })
     test.presale = presaleArtifact.at(deploy.getProxyAddress(receipt))
     test.PRESALE_OPEN_ROLE = await appBase.OPEN_ROLE()
+    if (appBase.REDUCE_BENEFICIARY_PCT_ROLE) {
+      test.PRESALE_REDUCE_BENEFICIARY_PCT_ROLE = await appBase.REDUCE_BENEFICIARY_PCT_ROLE()
+    }
     test.PRESALE_CONTRIBUTE_ROLE = await appBase.CONTRIBUTE_ROLE()
   },
   setPresalePermissions: async (test, appManager) => {

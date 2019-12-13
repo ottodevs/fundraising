@@ -19,11 +19,13 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
 
     /**
     Hardcoded constants to save gas
-    bytes32 public constant OPEN_ROLE       = keccak256("OPEN_ROLE");
-    bytes32 public constant CONTRIBUTE_ROLE = keccak256("CONTRIBUTE_ROLE");
+    bytes32 public constant OPEN_ROLE                   = keccak256("OPEN_ROLE");
+    bytes32 public constant REDUCE_BENEFICIARY_PCT_ROLE = keccak256("REDUCE_BENEFICIARY_PCT_ROLE");
+    bytes32 public constant CONTRIBUTE_ROLE             = keccak256("CONTRIBUTE_ROLE");
     */
-    bytes32 public constant OPEN_ROLE       = 0xefa06053e2ca99a43c97c4a4f3d8a394ee3323a8ff237e625fba09fe30ceb0a4;
-    bytes32 public constant CONTRIBUTE_ROLE = 0x9ccaca4edf2127f20c425fdd86af1ba178b9e5bee280cd70d88ac5f6874c4f07;
+    bytes32 public constant OPEN_ROLE                   = 0xefa06053e2ca99a43c97c4a4f3d8a394ee3323a8ff237e625fba09fe30ceb0a4;
+    bytes32 public constant REDUCE_BENEFICIARY_PCT_ROLE = 0x2738f3f227143b7fbb9720e93e2e5b36d7a15966e130b49f1582c6432d949aa9;
+    bytes32 public constant CONTRIBUTE_ROLE             = 0x9ccaca4edf2127f20c425fdd86af1ba178b9e5bee280cd70d88ac5f6874c4f07;
 
     uint256 public constant PPM = 1000000; // 0% = 0 * 10 ** 4; 1% = 1 * 10 ** 4; 100% = 100 * 10 ** 4
 
@@ -65,9 +67,10 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
     uint256                                         public totalRaised;
     uint256                                         public totalSold;
 
-    event SetOpenDate (uint64 date);
-    event Close       ();
-    event Contribute  (address indexed contributor, uint256 value, uint256 amount);
+    event SetOpenDate          (uint64 date);
+    event ReduceBeneficiatyPct (uint256 pct);
+    event Close                ();
+    event Contribute           (address indexed contributor, uint256 value, uint256 amount);
 
 
     /***** external function *****/
@@ -140,6 +143,18 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
     */
     function setPeriod(uint64 _period) external auth(OPEN_ROLE) {
         _setPeriod(_period);
+    }
+
+    /**
+     * @notice Reduce pre-minting for beneficiary percentage to `_pct`
+     * @param _pct New percentage to be set
+    */
+    function reduceBeneficiaryPct(uint64 _pct) external auth(REDUCE_BENEFICIARY_PCT_ROLE) {
+        require(_pct < mintingForBeneficiaryPct, ERROR_INVALID_PCT);
+
+        mintingForBeneficiaryPct = _pct;
+
+        emit ReduceBeneficiatyPct(_pct);
     }
 
     /**

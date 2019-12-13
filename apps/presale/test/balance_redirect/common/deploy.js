@@ -34,6 +34,11 @@ const deploy = {
     return test.presale.initialize(...paramsArr)
   },
 
+  setReduceBeneficiaryPctRole: async (test, appManager) => {
+    await test.acl.createPermission(appManager, test.presale.address, test.PRESALE_REDUCE_BENEFICIARY_PCT_ROLE, appManager, { from: appManager })
+
+  },
+
   prepareDefaultSetup: async (test, appManager, presaleArtifact = Presale) => {
     await prepareDefaultSetup(test, appManager, presaleArtifact)
   },
@@ -55,6 +60,7 @@ const deploy = {
 
   deployDefaultSetup: async (test, appManager) => {
     await deploy.prepareDefaultSetup(test, appManager, Presale)
+    await deploy.setReduceBeneficiaryPctRole(test, appManager)
     return await deploy.initializePresale(test, deploy.defaultDeployParams(test, appManager))
   },
 }
