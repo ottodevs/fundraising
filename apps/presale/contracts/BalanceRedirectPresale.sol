@@ -58,10 +58,12 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
     uint64                                          public period;
     uint256                                         public exchangeRate;
     uint256                                         public futureReserveRatio;
+    uint256                                         public mintingForBeneficiaryPct;
     uint64                                          public openDate;
 
     bool                                            public isClosed;
     uint256                                         public totalRaised;
+    uint256                                         public totalSold;
 
     event SetOpenDate (uint64 date);
     event Close       ();
@@ -91,6 +93,7 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
         uint64                       _period,
         uint256                      _exchangeRate,
         uint256                      _futureReserveRatio,
+        uint256                      _mintingForBeneficiaryPct,
         uint64                       _openDate
     )
         external
@@ -103,6 +106,7 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
         require(isContract(_contributionToken),                                     ERROR_INVALID_CONTRIBUTE_TOKEN);
         require(_exchangeRate > 0,                                                  ERROR_INVALID_EXCHANGE_RATE);
         require(_futureReserveRatio > 0 && _futureReserveRatio <= PPM, ERROR_INVALID_PCT);
+        require(_mintingForBeneficiaryPct <= PPM, ERROR_INVALID_PCT);
 
         initialized();
 
@@ -113,6 +117,7 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
         contributionToken = _contributionToken;
         exchangeRate = _exchangeRate;
         futureReserveRatio = _futureReserveRatio;
+        mintingForBeneficiaryPct = _mintingForBeneficiaryPct;
 
         _setPeriod(_period);
 
@@ -161,8 +166,9 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
 
         // (mint ✨) ~~~> project tokens ~~~> (contributor)
         uint256 tokensToSell = contributionToTokens(_value);
-        tokenManager.mint(_contributor, tokensToSell);
         totalRaised = totalRaised.add(_value);
+        totalSold = totalSold.add(tokensToSell);
+        tokenManager.mint(_contributor, tokensToSell);
 
         emit Contribute(_contributor, _value, tokensToSell);
     }
@@ -182,8 +188,15 @@ contract BalanceRedirectPresale is IsContract, AragonApp, IPresale {
 
         isClosed = true;
 
+        // mint new tokens for beneficiary
+        uint256 tokensToMint;
+        if (mintingForBeneficiaryPct > 0) {
+            tokensToMint = totalSold.mul(mintingForBeneficiaryPct) / PPM;
+            tokenManager.mint(beneficiary, tokensToMint);
+        }
+
         // (presale) ~~~> contribution tokens ~~~> (reserve)
-        uint256 tokensForReserve = totalRaised.mul(futureReserveRatio) / PPM;
+        uint256 tokensForReserve = (totalRaised.mul(PPM + mintingForBeneficiaryPct) / PPM).mul(futureReserveRatio) / PPM;
         _transfer(contributionToken, address(this), reserve, tokensForReserve);
 
         // (presale) ~~~> contribution tokens ~~~> (beneficiary)

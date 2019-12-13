@@ -28,6 +28,7 @@ const deploy = {
       params.presalePeriod,
       params.presaleExchangeRate,
       params.futureReserveRatio,
+      params.mintingForBeneficiaryPct,
       params.startDate,
     ]
     return test.presale.initialize(...paramsArr)
@@ -47,6 +48,7 @@ const deploy = {
       presalePeriod: PRESALE_PERIOD,
       presaleExchangeRate: PRESALE_EXCHANGE_RATE,
       futureReserveRatio: RESERVE_RATIOS[0],
+      mintingForBeneficiaryPct: 0,
       startDate: 0,
     }
   },
